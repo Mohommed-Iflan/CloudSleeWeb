@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRive, useStateMachineInput } from '@rive-app/react-canvas';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
 
 export default function Login() {
@@ -9,7 +9,15 @@ export default function Login() {
   const [showAddress, setShowAddress] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
+
+  // Listen for screen size changes
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // --- Form Data ---
   const [email, setEmail] = useState('');
@@ -76,18 +84,19 @@ export default function Login() {
   };
 
   return (
-    <div style={styles.container} onMouseMove={handleMouseMove}>
-      <div style={styles.leftSide}>
-        <div style={styles.brand}>🩴 Slipper Haven</div>
-        <div style={styles.riveBox}>
-          <RiveComponent />
-        </div>
+    <div style={{...styles.container, flexDirection: isMobile ? 'column' : 'row'}} onMouseMove={handleMouseMove}>
+      
+      {/* LEFT SIDE (Animation/Hero) - Shrunken on Mobile */}
+      <div style={{...styles.leftSide, padding: isMobile ? '20px' : '40px', flex: isMobile ? 'none' : 1.2}}>
         <div style={styles.heroTextContent}>
-             <h2 style={styles.heroText}>Comfort to your foot,<br/>Feel free to your Heart.</h2>
+          <h2 style={{...styles.heroText, fontSize: isMobile ? '1.5rem' : '2.2rem'}}>
+            Comfort to your foot,<br/>Feel free to your Heart.
+          </h2>
         </div>
       </div>
 
-      <div style={styles.rightSide}>
+      {/* RIGHT SIDE (Form) - Fully Scrollable */}
+      <div style={{...styles.rightSide, padding: isMobile ? '20px 10px' : '0'}}>
         <div style={styles.formCard}>
           <h2 style={styles.title}>{isSignUp ? "Join the Camp" : "Howdy Camper 🤚"}</h2>
           <p style={styles.subtitle}>Please enter your details.</p>
@@ -116,7 +125,7 @@ export default function Login() {
                 <input placeholder="Phone (Optional)" style={styles.input} onChange={e => setPhone(e.target.value)} />
                 
                 <button type="button" onClick={() => setShowAddress(!showAddress)} style={styles.toggleBtn}>
-                   {showAddress ? "▲ Hide Address Fields" : "▼ Add Shipping Address"}
+                   {showAddress ? "▲ Hide Address" : "▼ Add Shipping Address"}
                 </button>
 
                 {showAddress && (
@@ -131,22 +140,18 @@ export default function Login() {
                     </select>
 
                     <select style={styles.select} disabled={!selectedCountry} onChange={(e) => setSelectedState(e.target.value)}>
-                      <option value="">Select State/District</option>
+                      <option value="">Select State</option>
                       {State.getStatesOfCountry(selectedCountry).map((s) => (
                         <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
                       ))}
                     </select>
 
-                    {City.getCitiesOfState(selectedCountry, selectedState).length > 0 ? (
-                      <select style={styles.select} disabled={!selectedState} onChange={(e) => setCity(e.target.value)}>
-                        <option value="">Select City</option>
-                        {City.getCitiesOfState(selectedCountry, selectedState).map((c) => (
-                          <option key={c.name} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input placeholder="Enter City Manually" style={styles.inputSmall} disabled={!selectedState} onChange={(e) => setCity(e.target.value)} />
-                    )}
+                    <select style={styles.select} disabled={!selectedState} onChange={(e) => setCity(e.target.value)}>
+                      <option value="">Select City</option>
+                      {City.getCitiesOfState(selectedCountry, selectedState).map((c) => (
+                        <option key={c.name} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
@@ -158,7 +163,7 @@ export default function Login() {
           </form>
 
           <p style={styles.toggle} onClick={() => setIsSignUp(!isSignUp)}>
-            {isSignUp ? "Back to Login" : "New to Slipper Haven? Signup"}
+            {isSignUp ? "Already have an account? Login" : "New to Slipper Haven? Signup"}
           </p>
         </div>
       </div>
@@ -167,24 +172,24 @@ export default function Login() {
 }
 
 const styles = {
-  container: { display: 'flex', height: '100vh', fontFamily: "'Inter', sans-serif", overflow: 'hidden' },
-  leftSide: { flex: 1.2, backgroundColor: '#f8faff', display: 'flex', flexDirection: 'column', padding: '40px' },
-  brand: { fontWeight: 'bold', fontSize: '20px', color: '#333' },
-  riveBox: { width: '100%', height: '400px', margin: 'auto' },
-  heroTextContent: { textAlign: 'center', marginBottom: '40px' },
-  heroText: { fontSize: '2.2rem', fontWeight: '800', color: '#1a1a1a' },
-  rightSide: { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', overflowY: 'auto' },
+  container: { display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", backgroundColor: '#fff' },
+  leftSide: { backgroundColor: '#f8faff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+  brand: { fontWeight: 'bold', fontSize: '20px', color: '#333', alignSelf: 'flex-start', marginBottom: '20px' },
+  riveBox: { width: '100%', maxWidth: '400px', margin: '0 auto' },
+  heroTextContent: { textAlign: 'center', marginTop: '20px' },
+  heroText: { fontWeight: '800', color: '#1a1a1a', lineHeight: 1.2 },
+  rightSide: { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', backgroundColor: '#fff' },
   formCard: { width: '100%', maxWidth: '380px', padding: '40px 20px' },
   title: { fontSize: '28px', marginBottom: '10px', fontWeight: 'bold' },
   subtitle: { color: '#666', marginBottom: '30px' },
-  input: { width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '15px', boxSizing: 'border-box' },
+  input: { width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '15px', boxSizing: 'border-box', fontSize: '16px' },
   passwordWrapper: { display: 'flex', alignItems: 'center', border: '1px solid #eee', borderRadius: '12px', paddingRight: '15px', marginBottom: '20px' },
-  inputNoMargin: { width: '100%', padding: '15px', border: 'none', borderRadius: '12px', outline: 'none' },
+  inputNoMargin: { width: '100%', padding: '15px', border: 'none', borderRadius: '12px', outline: 'none', fontSize: '16px' },
   eyeIcon: { cursor: 'pointer', fontSize: '18px' },
   toggleBtn: { background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: '600', marginBottom: '15px', display: 'block' },
   addressBox: { backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #f0f0f0' },
-  inputSmall: { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px' },
-  select: { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd' },
-  submitBtn: { width: '100%', padding: '15px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' },
+  inputSmall: { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' },
+  select: { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff' },
+  submitBtn: { width: '100%', padding: '15px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' },
   toggle: { textAlign: 'center', marginTop: '20px', cursor: 'pointer', color: '#2563eb', fontWeight: '600' }
 };
