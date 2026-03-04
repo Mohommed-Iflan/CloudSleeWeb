@@ -20,9 +20,17 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Controls mobile menu visibility
+  const [isMenuOpen, setIsMenuOpen] = useState(false); 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const ADMIN_EMAIL = "mohommediflaan@gmail.com";
+
+  // Listen for screen size changes to toggle mobile logic
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,14 +49,14 @@ export default function Navbar() {
     if (searchQuery.trim()) {
       navigate(`/search?q=${searchQuery.toLowerCase()}`);
       setSearchQuery(""); 
-      setIsMenuOpen(false); // Close menu on search
+      setIsMenuOpen(false); 
     }
   };
 
-  // Helper to handle navigation and close menu
   const navTo = (path) => {
     navigate(path);
     setIsMenuOpen(false);
+    setShowDropdown(false);
   };
 
   return (
@@ -70,7 +78,7 @@ export default function Navbar() {
       {/* NAV CONTENT (Search + Links) */}
       <div style={{
         ...styles.navContent,
-        display: isMenuOpen ? 'flex' : (window.innerWidth <= 768 ? 'none' : 'flex')
+        display: isMenuOpen ? 'flex' : (isMobile ? 'none' : 'flex')
       }}>
         
         {/* SEARCH BAR */}
@@ -102,8 +110,10 @@ export default function Navbar() {
           {user ? (
             <div 
               style={styles.dropdownWrapper} 
-              onMouseEnter={() => setShowDropdown(true)} 
-              onMouseLeave={() => setShowDropdown(false)}
+              // Toggle on click for mobile, hover for desktop
+              onClick={() => isMobile && setShowDropdown(!showDropdown)}
+              onMouseEnter={() => !isMobile && setShowDropdown(true)} 
+              onMouseLeave={() => !isMobile && setShowDropdown(false)}
             >
               <button style={styles.accountBtn}>
                 <User size={20} style={{ marginRight: '5px' }} />
@@ -111,7 +121,12 @@ export default function Navbar() {
               </button>
 
               {showDropdown && (
-                <div style={styles.dropdownContent}>
+                <div style={{
+                  ...styles.dropdownContent,
+                  position: isMobile ? 'static' : 'absolute',
+                  width: isMobile ? '100%' : '200px',
+                  boxShadow: isMobile ? 'none' : styles.dropdownContent.boxShadow
+                }}>
                   {user?.email === ADMIN_EMAIL && (
                     <>
                       <div style={styles.adminHeader}>ADMIN TOOLS</div>
@@ -184,7 +199,6 @@ const styles = {
     flex: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
-    // Mobile Overlay Styles
     ...(window.innerWidth <= 768 && {
       position: 'absolute',
       top: '80px',
@@ -195,7 +209,9 @@ const styles = {
       padding: '20px 0',
       boxShadow: '0 10px 15px rgba(0,0,0,0.05)',
       gap: '20px',
-      borderTop: '1px solid #eee'
+      borderTop: '1px solid #eee',
+      maxHeight: '80vh',
+      overflowY: 'auto'
     })
   },
   searchForm: { 
@@ -204,7 +220,7 @@ const styles = {
     maxWidth: '350px', 
     margin: '0 20px', 
     position: 'relative',
-    ...(window.innerWidth <= 768 && { maxWidth: '90%', margin: '0 auto' })
+    ...(window.innerWidth <= 768 && { maxWidth: '90%', margin: '0 auto', flex: 'none' })
   },
   searchInput: { 
     width: '100%', 
@@ -227,7 +243,7 @@ const styles = {
     display: 'flex', 
     gap: '20px', 
     alignItems: 'center',
-    ...(window.innerWidth <= 768 && { flexDirection: 'column', width: '100%' })
+    ...(window.innerWidth <= 768 && { flexDirection: 'column', width: '100%', gap: '10px' })
   },
   navItem: { 
     display: 'flex', 
@@ -247,7 +263,14 @@ const styles = {
     padding: '8px 18px', 
     fontSize: '11px' 
   },
-  dropdownWrapper: { position: 'relative', height: '100%', display: 'flex', alignItems: 'center' },
+  dropdownWrapper: { 
+    position: 'relative', 
+    height: '100%', 
+    display: 'flex', 
+    flexDirection: 'column',
+    alignItems: 'center',
+    cursor: 'pointer'
+  },
   accountBtn: { 
     display: 'flex', 
     alignItems: 'center', 
@@ -267,7 +290,7 @@ const styles = {
     boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
     borderRadius: '4px',
     overflow: 'hidden',
-    ...(window.innerWidth <= 768 && { position: 'static', width: '100%', boxShadow: 'none', textAlign: 'center' })
+    zIndex: 1002
   },
   adminHeader: { fontSize: '9px', fontWeight: '800', color: '#999', padding: '10px 15px 5px 15px' },
   dropdownLink: { 
