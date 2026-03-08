@@ -40,13 +40,11 @@ export default function Cart() {
     const unavailable = [];
 
     items.forEach(item => {
-      // Find the specific stock in the nested JSONB structure (Color -> Size)
       const colorData = item.products?.variant_data?.find(v => v.name === item.selected_color);
       const sizeData = colorData?.sizes?.find(s => s.size === item.selected_size);
       const currentStock = Number(sizeData?.stock) || 0;
 
       if (currentStock > 0) {
-        // We attach maxStock to the item for the UI quantity limit
         available.push({ ...item, maxStock: currentStock });
       } else {
         unavailable.push(item);
@@ -55,7 +53,6 @@ export default function Cart() {
 
     setAvailableItems(available);
     setUnavailableItems(unavailable);
-    // Auto-select all available items by default
     setSelectedIds(available.map(i => i.id));
   };
 
@@ -91,10 +88,24 @@ export default function Cart() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const calculateTotal = () => {
+  // --- NEW SHIPPING CALCULATION ---
+  const calculateShipping = () => {
+    const itemCount = selectedIds.length;
+    if (itemCount === 0) return 0;
+    if (itemCount === 1) return 300;
+    if (itemCount === 2) return 400;
+    // For 3 or more: 400 base (for first 2) + 50 for each additional item
+    return 400 + (itemCount - 2) * 50;
+  };
+
+  const calculateSubtotal = () => {
     return availableItems
       .filter(item => selectedIds.includes(item.id))
       .reduce((acc, item) => acc + (Number(item.price_at_addition) * item.quantity), 0);
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + calculateShipping();
   };
 
   const handleProceedToCheckout = () => {
@@ -102,7 +113,12 @@ export default function Cart() {
     if (itemsToBuy.length === 0) return;
 
     navigate('/checkout', { 
-      state: { selectedItems: itemsToBuy, totalAmount: calculateTotal() } 
+      state: { 
+        selectedItems: itemsToBuy, 
+        subtotal: calculateSubtotal(),
+        shippingFee: calculateShipping(),
+        totalAmount: calculateTotal() 
+      } 
     });
   };
 
@@ -117,7 +133,6 @@ export default function Cart() {
 
       <div style={styles.content}>
         <div style={styles.itemList}>
-          {/* AVAILABLE ITEMS */}
           {availableItems.length > 0 ? (
             availableItems.map((item) => (
               <div key={item.id} style={styles.cartCard}>
@@ -159,14 +174,13 @@ export default function Cart() {
             )
           )}
 
-          {/* UNAVAILABLE ITEMS (Logic strictly prevents checkout) */}
           {unavailableItems.length > 0 && (
             <div style={styles.unavailableSection}>
               <h4 style={styles.unavailableHeader}><AlertCircle size={14}/> UNAVAILABLE FOR PURCHASE</h4>
               <p style={styles.unavailableSub}>The items below recently went out of stock.</p>
               {unavailableItems.map((item) => (
                 <div key={item.id} style={styles.unavailableCard}>
-                  <div style={{width: '30px'}} /> {/* Checkbox spacer */}
+                  <div style={{width: '30px'}} />
                   <img src={item.products?.main_images?.[0]} alt="" style={styles.imgGray} />
                   <div style={styles.info}>
                     <h3 style={{...styles.prodName, color: '#999'}}>{item.products?.name}</h3>
@@ -179,16 +193,17 @@ export default function Cart() {
           )}
         </div>
 
-        {/* ORDER SUMMARY */}
         <aside style={styles.summary}>
           <h3 style={styles.summaryTitle}>ORDER SUMMARY</h3>
           <div style={styles.summaryRow}>
             <span>SUBTOTAL ({selectedIds.length} ITEMS)</span>
-            <span>Rs. {calculateTotal().toLocaleString()}</span>
+            <span>Rs. {calculateSubtotal().toLocaleString()}</span>
           </div>
           <div style={styles.summaryRow}>
             <span>SHIPPING</span>
-            <span style={{color: '#27ae60', fontWeight: 'bold'}}>FREE</span>
+            <span style={{color: '#1a1a1a', fontWeight: 'bold'}}>
+              {selectedIds.length > 0 ? `Rs. ${calculateShipping().toLocaleString()}` : "Rs. 0"}
+            </span>
           </div>
           <div style={styles.totalRow}>
             <span>TOTAL</span>

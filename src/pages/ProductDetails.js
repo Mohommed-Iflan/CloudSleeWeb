@@ -14,6 +14,9 @@ export default function ProductDetails() {
   
   // State for Image Preview
   const [fullScreenIndex, setFullScreenIndex] = useState(null);
+  
+  // State for Cart Notification
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,11 +84,74 @@ export default function ProductDetails() {
     });
   };
 
+  const handleAddToCart = async () => {
+    if (isOutOfStock) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Please login to add items to your cart!");
+      navigate('/login');
+      return;
+    }
+
+    try {
+      // Check if this exact variant exists in cart
+      const { data: existingItem } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('product_id', product.id)
+        .eq('selected_color', currentVariant.name)
+        .eq('selected_size', currentSizeOption.size)
+        .single();
+
+      if (existingItem) {
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: existingItem.quantity + 1 })
+          .eq('id', existingItem.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert([
+            {
+              user_id: user.id,
+              product_id: product.id,
+              quantity: 1,
+              selected_color: currentVariant.name,
+              selected_size: currentSizeOption.size,
+              price_at_addition: displayPrice
+            }
+          ]);
+        if (insertError) throw insertError;
+      }
+
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+
+    } catch (error) {
+      console.error("Cart Error:", error.message);
+      alert("Failed to add to cart. Please try again.");
+    }
+  };
+
   if (loading) return <div style={{textAlign:'center', padding:'100px'}}>Loading...</div>;
   if (!product) return <div style={{textAlign:'center', padding:'100px'}}>Product Not Found</div>;
 
   return (
     <div style={styles.container}>
+
+      {/* --- CART SUCCESS NOTIFICATION --- */}
+      {showToast && (
+        <div style={styles.toast}>
+          <div style={styles.toastContent}>
+            <span>✅ Added to cart successfully!</span>
+            <button onClick={() => navigate('/cart')} style={styles.toastLink}>VIEW CART</button>
+          </div>
+        </div>
+      )}
       
       {/* --- FULL SCREEN IMAGE PREVIEW MODAL --- */}
       {fullScreenIndex !== null && (
@@ -167,7 +233,7 @@ export default function ProductDetails() {
             <button disabled={isOutOfStock} style={{...styles.buyBtn, backgroundColor: isOutOfStock ? '#ccc' : '#00bee1'}} onClick={handleBuyNow}>
               {isOutOfStock ? "SOLD OUT" : "BUY NOW"}
             </button>
-            <button disabled={isOutOfStock} style={{...styles.cartBtn, opacity: isOutOfStock ? 0.5 : 1}} onClick={() => {}}>
+            <button disabled={isOutOfStock} style={{...styles.cartBtn, opacity: isOutOfStock ? 0.5 : 1}} onClick={handleAddToCart}>
               ADD TO CART
             </button>
           </div>
@@ -236,7 +302,10 @@ export default function ProductDetails() {
 }
 
 const styles = {
-  container: { maxWidth: '1200px', margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif' },
+  container: { maxWidth: '1200px', margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif', position: 'relative' },
+  toast: { position: 'fixed', top: '100px', right: '20px', backgroundColor: '#333', color: '#fff', padding: '15px 25px', borderRadius: '12px', zIndex: 10001, boxShadow: '0 10px 30px rgba(0,0,0,0.2)' },
+  toastContent: { display: 'flex', alignItems: 'center', gap: '15px' },
+  toastLink: { backgroundColor: '#00bee1', border: 'none', color: '#fff', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' },
   topSection: { display: 'flex', gap: '40px', flexWrap: 'wrap', marginBottom: '40px' },
   imageColumn: { flex: '1.2', minWidth: '300px' },
   heroWrapper: { width: '100%', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#f9f9f9', height: '550px' },
@@ -268,8 +337,6 @@ const styles = {
   reviewSection: { marginTop: '40px' },
   reviewTitle: { fontSize: '22px', fontWeight: 'bold', marginBottom: '30px' },
   reviewCard: { paddingBottom: '25px', borderBottom: '1px solid #eee', marginBottom: '25px' },
-
-  // PREVIEW MODAL STYLES
   fullScreenOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
   fullScreenImg: { maxHeight: '90%', maxWidth: '90%', objectFit: 'contain' },
   navBtn: { position: 'absolute', background: 'none', border: 'none', color: '#fff', fontSize: '50px', cursor: 'pointer', padding: '20px', zIndex: 10000 },

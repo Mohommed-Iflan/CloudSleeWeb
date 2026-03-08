@@ -63,7 +63,7 @@ serve(async (req) => {
     const emailHtml = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; color: #333;">
       <div style="text-align: center; padding: 20px 0;">
-        <h1 style="text-transform: uppercase; letter-spacing: 2px; margin: 0;">CloudSly</h1>
+        <h1 style="text-transform: uppercase; letter-spacing: 2px; margin: 0;">CloudSlee</h1>
       </div>
       
       <div style="padding: 20px; border: 1px solid ${lightGray}; border-radius: 8px;">
@@ -113,7 +113,7 @@ serve(async (req) => {
 
       <div style="text-align: center; padding: 20px; font-size: 11px; color: #999;">
         <p>This is an automatically generated email, please do not reply.</p>
-        <p>&copy; ${new Date().getFullYear()} CloudSly. All Rights Reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} CloudSlee. All Rights Reserved.</p>
       </div>
     </div>
     `;
