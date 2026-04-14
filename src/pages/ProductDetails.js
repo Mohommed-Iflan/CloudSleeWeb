@@ -347,7 +347,7 @@ export default function ProductDetails() {
 
           .glass-thumb-sidebar {
             flex-direction: row;
-            order: 2; /* Move thumbnails below main image */
+            order: 2;
             margin-bottom: 20px;
           }
 
@@ -355,6 +355,11 @@ export default function ProductDetails() {
             flex-direction: column;
             border-radius: 25px;
             width: 100%;
+          }
+          
+          /* Title color changed to black for mobile */
+          .glass-title {
+            color: #000000; 
           }
 
           .glass-image-section {
@@ -371,7 +376,7 @@ export default function ProductDetails() {
             margin-top: 40px;
           }
           
-          .glass-hero-img:hover { transform: none; } /* Disable hover on mobile */
+          .glass-hero-img:hover { transform: none; }
         }
       `}</style>
     </div>
