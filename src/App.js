@@ -23,6 +23,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import ScrollToTop from './components/ScrollToTop';
 import ContactUs from './pages/ContactUs';
 import Settings from './pages/Settings';
+import ResetPassword from './pages/ResetPassword';
+
 
 
 
@@ -92,6 +94,7 @@ function App() {
             <Route path="/my-orders" element={user ? <MyOrders user={user} /> : <Navigate to="/login" />} />
             <Route path="/review/:orderId" element={user ? <ReviewPage user={user} /> : <Navigate to="/login" />} />
             <Route path="/return/:orderId" element={user ? <ReturnPage user={user} /> : <Navigate to="/login" />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected Admin Routes */}
             <Route 
