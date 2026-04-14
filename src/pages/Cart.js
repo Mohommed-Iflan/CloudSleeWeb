@@ -8,10 +8,14 @@ export default function Cart() {
   const [unavailableItems, setUnavailableItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchCart();
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const fetchCart = async () => {
@@ -88,13 +92,11 @@ export default function Cart() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  // --- NEW SHIPPING CALCULATION ---
   const calculateShipping = () => {
     const itemCount = selectedIds.length;
     if (itemCount === 0) return 0;
     if (itemCount === 1) return 300;
     if (itemCount === 2) return 400;
-    // For 3 or more: 400 base (for first 2) + 50 for each additional item
     return 400 + (itemCount - 2) * 50;
   };
 
@@ -104,14 +106,11 @@ export default function Cart() {
       .reduce((acc, item) => acc + (Number(item.price_at_addition) * item.quantity), 0);
   };
 
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateShipping();
-  };
+  const calculateTotal = () => calculateSubtotal() + calculateShipping();
 
   const handleProceedToCheckout = () => {
     const itemsToBuy = availableItems.filter(item => selectedIds.includes(item.id));
     if (itemsToBuy.length === 0) return;
-
     navigate('/checkout', { 
       state: { 
         selectedItems: itemsToBuy, 
@@ -125,17 +124,17 @@ export default function Cart() {
   if (loading) return <div style={styles.loader}>Validating Inventory...</div>;
 
   return (
-    <div style={styles.container}>
+    <div style={{...styles.container, padding: isMobile ? '30px 5%' : '60px 8%'}}>
       <header style={styles.header}>
-        <h2 style={styles.title}>YOUR SHOPPING BAG</h2>
+        <h2 style={{...styles.title, fontSize: isMobile ? '20px' : '24px'}}>YOUR SHOPPING BAG</h2>
         <p style={styles.subtitle}>{availableItems.length + unavailableItems.length} ITEMS TOTAL</p>
       </header>
 
-      <div style={styles.content}>
+      <div style={{...styles.content, gridTemplateColumns: isMobile ? '1fr' : '1.8fr 1fr', gap: isMobile ? '30px' : '60px'}}>
         <div style={styles.itemList}>
           {availableItems.length > 0 ? (
             availableItems.map((item) => (
-              <div key={item.id} style={styles.cartCard}>
+              <div key={item.id} style={{...styles.cartCard, flexDirection: isMobile ? 'row' : 'row', alignItems: 'flex-start'}}>
                 <div style={styles.checkWrapper}>
                   <input 
                     type="checkbox" 
@@ -144,23 +143,23 @@ export default function Cart() {
                     style={styles.checkbox}
                   />
                 </div>
-                <img src={item.products?.main_images?.[0]} alt="" style={styles.img} />
+                <img src={item.products?.main_images?.[0]} alt="" style={{...styles.img, width: isMobile ? '80px' : '110px', height: isMobile ? '80px' : '110px'}} />
                 <div style={styles.info}>
-                  <h3 style={styles.prodName}>{item.products?.name?.toUpperCase()}</h3>
+                  <h3 style={{...styles.prodName, fontSize: isMobile ? '13px' : '14px'}}>{item.products?.name?.toUpperCase()}</h3>
                   <p style={styles.variantDetails}>{item.selected_color} | SIZE {item.selected_size}</p>
                   
-                  <div style={styles.qtyRow}>
+                  <div style={{...styles.qtyRow, flexDirection: isMobile ? 'column' : 'row', alignItems: 'flex-start', gap: isMobile ? '10px' : '15px'}}>
                     <div style={styles.qtyPicker}>
                       <button onClick={() => updateQuantity(item.id, item.quantity, -1, item.maxStock)} style={styles.qtyBtn}><Minus size={12}/></button>
                       <span style={styles.qtyVal}>{item.quantity}</span>
                       <button onClick={() => updateQuantity(item.id, item.quantity, 1, item.maxStock)} style={styles.qtyBtn}><Plus size={12}/></button>
                     </div>
-                    <span style={styles.stockStatus}><CheckCircle2 size={12} color="#27ae60"/> {item.maxStock} available</span>
+                    <span style={styles.stockStatus}><CheckCircle2 size={12} color="#27ae60"/> {item.maxStock} in stock</span>
                   </div>
                 </div>
-                <div style={styles.priceCol}>
-                  <p style={styles.price}>Rs. {(item.price_at_addition * item.quantity).toLocaleString()}</p>
-                  <button onClick={() => removeItem(item.id, true)} style={styles.removeBtn}><Trash2 size={16}/></button>
+                <div style={{...styles.priceCol, height: isMobile ? 'auto' : '100px'}}>
+                  <p style={{...styles.price, fontSize: isMobile ? '14px' : '16px'}}>Rs. {(item.price_at_addition * item.quantity).toLocaleString()}</p>
+                  <button onClick={() => removeItem(item.id, true)} style={{...styles.removeBtn, marginTop: isMobile ? '15px' : '0'}}><Trash2 size={16}/></button>
                 </div>
               </div>
             ))
@@ -176,14 +175,14 @@ export default function Cart() {
 
           {unavailableItems.length > 0 && (
             <div style={styles.unavailableSection}>
-              <h4 style={styles.unavailableHeader}><AlertCircle size={14}/> UNAVAILABLE FOR PURCHASE</h4>
-              <p style={styles.unavailableSub}>The items below recently went out of stock.</p>
+              <h4 style={styles.unavailableHeader}><AlertCircle size={14}/> UNAVAILABLE</h4>
+              <p style={styles.unavailableSub}>Items below recently went out of stock.</p>
               {unavailableItems.map((item) => (
                 <div key={item.id} style={styles.unavailableCard}>
                   <div style={{width: '30px'}} />
-                  <img src={item.products?.main_images?.[0]} alt="" style={styles.imgGray} />
+                  <img src={item.products?.main_images?.[0]} alt="" style={{...styles.imgGray, width: isMobile ? '60px' : '90px', height: isMobile ? '60px' : '90px'}} />
                   <div style={styles.info}>
-                    <h3 style={{...styles.prodName, color: '#999'}}>{item.products?.name}</h3>
+                    <h3 style={{...styles.prodName, color: '#999', fontSize: isMobile ? '12px' : '14px'}}>{item.products?.name}</h3>
                     <p style={styles.outText}>OUT OF STOCK</p>
                   </div>
                   <button onClick={() => removeItem(item.id, false)} style={styles.removeBtn}><Trash2 size={16}/></button>
@@ -193,7 +192,7 @@ export default function Cart() {
           )}
         </div>
 
-        <aside style={styles.summary}>
+        <aside style={{...styles.summary, position: isMobile ? 'static' : 'sticky', padding: isMobile ? '25px' : '35px'}}>
           <h3 style={styles.summaryTitle}>ORDER SUMMARY</h3>
           <div style={styles.summaryRow}>
             <span>SUBTOTAL ({selectedIds.length} ITEMS)</span>
@@ -228,40 +227,40 @@ export default function Cart() {
 }
 
 const styles = {
-  container: { padding: '60px 8%', maxWidth: '1300px', margin: 'auto', fontFamily: "'Inter', sans-serif", color: '#1a1a1a' },
-  header: { marginBottom: '40px', borderBottom: '1px solid #eee', paddingBottom: '20px' },
-  title: { fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' },
-  subtitle: { fontSize: '12px', color: '#888', marginTop: '5px' },
-  content: { display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '60px', alignItems: 'start' },
+  container: { maxWidth: '1300px', margin: 'auto', fontFamily: "'Inter', sans-serif", color: '#1a1a1a' },
+  header: { marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' },
+  title: { fontWeight: '900', letterSpacing: '-0.5px' },
+  subtitle: { fontSize: '11px', color: '#888', marginTop: '5px' },
+  content: { display: 'grid', alignItems: 'start' },
   itemList: { display: 'flex', flexDirection: 'column' },
-  cartCard: { display: 'flex', alignItems: 'center', padding: '25px 0', borderBottom: '1px solid #eee', gap: '20px' },
-  checkWrapper: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  checkbox: { width: '20px', height: '20px', cursor: 'pointer', accentColor: '#000' },
-  img: { width: '110px', height: '110px', objectFit: 'cover', borderRadius: '8px', backgroundColor: '#f9f9f9' },
-  imgGray: { width: '90px', height: '90px', objectFit: 'cover', borderRadius: '8px', filter: 'grayscale(1)', opacity: 0.5 },
+  cartCard: { display: 'flex', padding: '20px 0', borderBottom: '1px solid #eee', gap: '15px' },
+  checkWrapper: { display: 'flex', alignItems: 'center', paddingTop: '5px' },
+  checkbox: { width: '18px', height: '18px', cursor: 'pointer', accentColor: '#000' },
+  img: { objectFit: 'cover', borderRadius: '8px', backgroundColor: '#f9f9f9' },
+  imgGray: { objectFit: 'cover', borderRadius: '8px', filter: 'grayscale(1)', opacity: 0.5 },
   info: { flex: 1 },
-  prodName: { fontSize: '14px', fontWeight: '700', marginBottom: '4px', letterSpacing: '0.3px' },
-  variantDetails: { fontSize: '11px', color: '#777', textTransform: 'uppercase', marginBottom: '12px' },
-  qtyRow: { display: 'flex', alignItems: 'center', gap: '15px' },
+  prodName: { fontWeight: '700', marginBottom: '4px', letterSpacing: '0.3px' },
+  variantDetails: { fontSize: '10px', color: '#777', textTransform: 'uppercase', marginBottom: '10px' },
+  qtyRow: { display: 'flex', gap: '15px' },
   qtyPicker: { display: 'flex', alignItems: 'center', border: '1px solid #ddd', borderRadius: '6px', overflow: 'hidden' },
-  qtyBtn: { padding: '8px 12px', background: '#fff', border: 'none', cursor: 'pointer' },
-  qtyVal: { fontSize: '13px', fontWeight: '600', minWidth: '20px', textAlign: 'center' },
-  stockStatus: { fontSize: '10px', color: '#27ae60', display: 'flex', alignItems: 'center', gap: '4px' },
-  priceCol: { textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100px' },
-  price: { fontSize: '16px', fontWeight: '800' },
-  removeBtn: { border: 'none', background: 'none', cursor: 'pointer', color: '#ccc', transition: '0.2s' },
-  summary: { padding: '35px', backgroundColor: '#fafafa', borderRadius: '16px', border: '1px solid #f0f0f0', position: 'sticky', top: '40px' },
-  summaryTitle: { fontSize: '16px', fontWeight: '800', marginBottom: '25px', letterSpacing: '1px' },
-  summaryRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '18px', fontSize: '13px', color: '#555' },
-  totalRow: { display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #eee', fontSize: '18px', fontWeight: '900' },
-  checkoutBtn: { width: '100%', padding: '20px', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '14px', marginTop: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' },
-  secureText: { textAlign: 'center', fontSize: '10px', color: '#aaa', marginTop: '15px', textTransform: 'uppercase', letterSpacing: '1px' },
-  unavailableSection: { marginTop: '60px', backgroundColor: '#fff5f5', padding: '25px', borderRadius: '12px' },
-  unavailableHeader: { fontSize: '13px', color: '#e74c3c', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' },
-  unavailableSub: { fontSize: '11px', color: '#888', marginBottom: '15px' },
-  unavailableCard: { display: 'flex', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #ffebeb', gap: '15px' },
-  outText: { fontSize: '11px', color: '#e74c3c', fontWeight: 'bold', marginTop: '5px' },
-  empty: { textAlign: 'center', padding: '80px 0' },
-  shopBtn: { padding: '15px 35px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', marginTop: '25px', cursor: 'pointer', fontWeight: '700', fontSize: '12px' },
+  qtyBtn: { padding: '6px 10px', background: '#fff', border: 'none', cursor: 'pointer' },
+  qtyVal: { fontSize: '12px', fontWeight: '600', minWidth: '20px', textAlign: 'center' },
+  stockStatus: { fontSize: '9px', color: '#27ae60', display: 'flex', alignItems: 'center', gap: '4px' },
+  priceCol: { textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' },
+  price: { fontWeight: '800' },
+  removeBtn: { border: 'none', background: 'none', cursor: 'pointer', color: '#ccc' },
+  summary: { backgroundColor: '#fafafa', borderRadius: '16px', border: '1px solid #f0f0f0', top: '40px' },
+  summaryTitle: { fontSize: '15px', fontWeight: '800', marginBottom: '20px', letterSpacing: '1px' },
+  summaryRow: { display: 'flex', justifyContent: 'space-between', marginBottom: '15px', fontSize: '12px', color: '#555' },
+  totalRow: { display: 'flex', justifyContent: 'space-between', marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #eee', fontSize: '18px', fontWeight: '900' },
+  checkoutBtn: { width: '100%', padding: '18px', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '800', fontSize: '14px', marginTop: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' },
+  secureText: { textAlign: 'center', fontSize: '9px', color: '#aaa', marginTop: '15px', textTransform: 'uppercase' },
+  unavailableSection: { marginTop: '40px', backgroundColor: '#fff5f5', padding: '20px', borderRadius: '12px' },
+  unavailableHeader: { fontSize: '12px', color: '#e74c3c', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' },
+  unavailableSub: { fontSize: '10px', color: '#888', marginBottom: '15px' },
+  unavailableCard: { display: 'flex', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #ffebeb', gap: '15px' },
+  outText: { fontSize: '10px', color: '#e74c3c', fontWeight: 'bold', marginTop: '5px' },
+  empty: { textAlign: 'center', padding: '60px 0' },
+  shopBtn: { padding: '12px 30px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', marginTop: '20px', cursor: 'pointer', fontWeight: '700', fontSize: '11px' },
   loader: { textAlign: 'center', padding: '100px', fontSize: '14px', color: '#888', letterSpacing: '2px' }
 };

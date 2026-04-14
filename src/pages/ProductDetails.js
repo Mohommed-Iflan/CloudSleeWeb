@@ -111,7 +111,6 @@ export default function ProductDetails() {
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false); // Mobile Full Screen State
 
   useEffect(() => {
     const fetchData = async () => {
@@ -133,12 +132,6 @@ export default function ProductDetails() {
   const isOutOfStock = stockCount <= 0;
   const gallery = product?.main_images || [];
 
-  const handleImageClick = () => {
-    if (window.innerWidth <= 768) {
-      setIsFullScreen(true);
-    }
-  };
-
   const handleAddToCart = async () => {
     if (isOutOfStock) return;
     const { data: { user } } = await supabase.auth.getUser();
@@ -155,6 +148,29 @@ export default function ProductDetails() {
     } catch (error) { alert("Error adding to cart"); }
   };
 
+  // --- FIX: SEND DATA DIRECTLY TO CHECKOUT ---
+  const handleBuyNow = async () => {
+    if (isOutOfStock) return;
+    
+    // Package the current selection into an object
+    const purchaseData = {
+      items: [{
+        id: product.id,
+        name: product.name,
+        price: displayPrice,
+        image: mainImage,
+        color: currentVariant.name,
+        size: currentSizeOption.size,
+        quantity: 1
+      }],
+      isDirectPurchase: true, // Flag for checkout page to know it's not from cart
+      total: displayPrice
+    };
+
+    // Navigate to checkout and pass the data in the route state
+    navigate('/checkout', { state: purchaseData });
+  };
+
   if (loading) return <div style={{textAlign:'center', padding:'100px'}}>Loading...</div>;
   if (!product) return <div style={{textAlign:'center', padding:'100px'}}>Product Not Found</div>;
 
@@ -163,14 +179,6 @@ export default function ProductDetails() {
       <header style={styles.heroHeader}>
         <RopeAnimation />
       </header>
-
-      {/* Full Screen Image Overlay (Mobile Only) */}
-      {isFullScreen && (
-        <div className="mobile-fullscreen-overlay" onClick={() => setIsFullScreen(false)}>
-          <span className="close-fullscreen">&times;</span>
-          <img src={mainImage} alt="Full view" className="fullscreen-img" />
-        </div>
-      )}
 
       {showToast && (
         <div style={styles.toast}>
@@ -184,23 +192,17 @@ export default function ProductDetails() {
       <div style={styles.container}>
         <div className="glass-layout-container">
           
+          <div className="glass-thumb-sidebar">
+            {gallery.map((img, i) => (
+              <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={() => setMainImage(img)}>
+                <img src={img} alt="thumb" />
+              </div>
+            ))}
+          </div>
+
           <div className="glass-main-card">
              <div className="glass-image-section">
-                <img 
-                  src={mainImage} 
-                  alt={product.name} 
-                  className="glass-hero-img" 
-                  onClick={handleImageClick} // Trigger Full Screen
-                />
-                
-                {/* Thumbnails moved INSIDE/UNDER the image section for mobile via CSS */}
-                <div className="glass-thumb-sidebar mobile-selector">
-                  {gallery.map((img, i) => (
-                    <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setMainImage(img); }}>
-                      <img src={img} alt="thumb" />
-                    </div>
-                  ))}
-                </div>
+                <img src={mainImage} alt={product.name} className="glass-hero-img" />
              </div>
              
              <div className="glass-controls-section">
@@ -243,7 +245,8 @@ export default function ProductDetails() {
                    <button disabled={isOutOfStock} onClick={handleAddToCart} className="glass-cart-btn">
                      {isOutOfStock ? "SOLD OUT" : "ADD TO CART"}
                    </button>
-                   <button disabled={isOutOfStock} onClick={() => navigate('/checkout')} className="glass-buy-btn">
+                   {/* UPDATED BUTTON CALL */}
+                   <button disabled={isOutOfStock} onClick={handleBuyNow} className="glass-buy-btn">
                      BUY NOW
                    </button>
                 </div>
@@ -258,126 +261,42 @@ export default function ProductDetails() {
       </div>
 
       <style>{`
-        /* FULLSCREEN MODAL STYLES */
-        .mobile-fullscreen-overlay {
-          position: fixed;
-          top: 0; left: 0; width: 100%; height: 100%;
-          background: #000;
-          z-index: 9999;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .fullscreen-img { max-width: 100%; max-height: 80vh; object-fit: contain; }
-        .close-fullscreen {
-          position: absolute; top: 20px; right: 30px;
-          color: white; font-size: 40px; font-weight: bold; cursor: pointer;
-        }
-
-        .glass-layout-container {
-          display: flex;
-          gap: 30px;
-          margin-top: -320px;
-          position: relative;
-          z-index: 10;
-          font-family: 'Poppins', sans-serif;
-        }
-
-        .glass-thumb-sidebar {
-          display: flex;
-          flex-direction: column;
-          gap: 15px;
-        }
-
-        .glass-thumb-item {
-          width: 70px; height: 70px;
-          background: rgba(255,255,255,0.2);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255,255,255,0.3);
-          border-radius: 12px;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; overflow: hidden; transition: 0.3s;
-        }
+        .glass-layout-container { display: flex; gap: 30px; margin-top: -260px; position: relative; z-index: 10; font-family: 'Poppins', sans-serif; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
+        .glass-thumb-sidebar { display: flex; flex-direction: column; gap: 15px; }
+        .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; }
         .glass-thumb-item img { width: 80%; }
         .glass-thumb-item.active { border-color: #fff; background: rgba(255,255,255,0.4); }
-
-        .glass-main-card {
-          flex: 1;
-          max-width: 1500px;
-          background: rgba(255,255,255,0.1);
-          backdrop-filter: blur(25px);
-          border: 1px solid rgba(255,255,255,0.3);
-          border-radius: 40px;
-          display: flex;
-          overflow: hidden;
-        }
-
-        .glass-image-section {
-          flex: 1.2;
-          display: flex;
-          flex-direction: column; /* Stack img and thumbs vertically for mobile-friendly view */
-          align-items: center;
-          justify-content: center;
-          padding: 40px;
-          background: rgba(255,255,255,0.05);
-        }
-        .glass-hero-img { width: 100%; transition: 0.5s; cursor: zoom-in; }
-
-        .glass-controls-section {
-          flex: 1; padding: 40px;
-          display: flex; flex-direction: column; justify-content: center;
-        }
-
+        .glass-main-card { flex: 1; max-width: 1500px; background: rgba(255,255,255,0.1); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 40px 60px rgba(0,0,0,0.15); border-radius: 40px; display: flex; overflow: hidden; }
+        .glass-image-section { flex: 1.2; display: flex; align-items: center; justify-content: center; padding: 40px; background: rgba(255,255,255,0.05); }
+        .glass-hero-img { width: 100%; transition: 0.5s; }
+        .glass-controls-section { flex: 1; padding: 40px; display: flex; flex-direction: column; justify-content: center; text-align: left; }
         .glass-title { font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 5px; }
         .glass-price { font-size: 20px; font-weight: 700; color: #ff4d4d; margin-bottom: 20px; }
-
         .stock-container { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
         .stock-dot { width: 10px; height: 10px; border-radius: 50%; }
         .stock-dot.in { background-color: #27ae60; }
         .stock-dot.out { background-color: #e74c3c; }
         .stock-label { font-size: 13px; font-weight: 600; color: #333; }
-
+        .glass-label { font-size: 10px; font-weight: 800; color: #555; margin-bottom: 8px; text-transform: uppercase; }
         .glass-swatch-row { display: flex; gap: 10px; margin-bottom: 20px; }
         .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; }
         .glass-swatch.selected { outline: 2px solid #000; outline-offset: 2px; }
-
         .glass-size-row { display: flex; gap: 8px; margin-bottom: 30px; }
-        .glass-size-btn { 
-          width: 38px; height: 38px; background: #fff; border: none; border-radius: 8px; 
-          font-weight: 800; font-size: 11px; cursor: pointer;
-        }
+        .glass-size-btn { width: 38px; height: 38px; background: #fff; border: none; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; }
         .glass-size-btn.active { background: #000; color: #fff; }
-
-        .glass-cart-btn { background: #000; color: #fff; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; margin-bottom:10px; }
-        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-
+        .glass-action-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .glass-cart-btn, .glass-buy-btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .glass-cart-btn { background: #000; color: #fff; border: none; }
+        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; }
         .bottom-content { margin-top: 60px; padding: 0 20px 0 100px; max-width: 900px; }
-
-        /* MOBILE OVERRIDES */
         @media (max-width: 768px) {
-          .glass-layout-container { margin-top: -150px; flex-direction: column; padding: 0 15px; }
-          .glass-main-card { flex-direction: column; border-radius: 25px; }
+          .glass-layout-container { margin-top: -200px; flex-direction: column; align-items: center; padding: 0 20px; }
+          .glass-thumb-sidebar { flex-direction: row; order: 2; margin-bottom: 20px; }
+          .glass-main-card { flex-direction: column; border-radius: 25px; width: 100%; }
+          .glass-title { color: #000000; }
           .glass-image-section { padding: 20px; }
-          
-          /* Move selector under image on mobile */
-          .mobile-selector {
-            flex-direction: row !important;
-            margin-top: 20px;
-            overflow-x: auto;
-            width: 100%;
-            justify-content: center;
-          }
-          .glass-thumb-item { width: 60px; height: 60px; flex-shrink: 0; }
-
-          .glass-title { color: #000000; text-align: center; }
-          .glass-price { text-align: center; }
           .glass-controls-section { padding: 25px; }
-          .bottom-content { padding: 0 20px; text-align: center; }
-        }
-
-        /* Hide the original sidebar on desktop if we are using the one inside image section */
-        @media (min-width: 769px) {
-           .mobile-selector { flex-direction: column; position: absolute; left: -100px; top: 0; }
+          .bottom-content { padding: 0 20px; text-align: center; margin-top: 40px; }
         }
       `}</style>
     </div>
@@ -386,10 +305,7 @@ export default function ProductDetails() {
 
 const styles = {
   pageWrapper: { backgroundColor: '#fff', minHeight: '100vh', paddingBottom: '100px' },
-  heroHeader: { 
-    height: '350px', backgroundColor: '#000', position: 'relative', 
-    display: 'flex', alignItems: 'center', justifyContent: 'center' 
-  },
+  heroHeader: { height: '350px', backgroundColor: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   container: { maxWidth: '1400px', margin: '0 auto' },
   sectionTitle: { fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '15px' },
   description: { lineHeight: '1.6', color: '#666', fontSize: '14px' },
