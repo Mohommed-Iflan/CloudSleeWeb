@@ -106,12 +106,12 @@ export default function ProductDetails() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [reviews, setReviews] = useState([]);
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false); // Mobile Full Screen State
 
   useEffect(() => {
     const fetchData = async () => {
@@ -120,8 +120,6 @@ export default function ProductDetails() {
       if (prod) {
         setProduct(prod);
         setMainImage(prod.main_images?.[0] || "");
-        const { data: revs } = await supabase.from('reviews').select('*').eq('product_id', productId);
-        if (revs) setReviews(revs);
       }
       setLoading(false);
     };
@@ -134,6 +132,12 @@ export default function ProductDetails() {
   const stockCount = Number(currentSizeOption?.stock) || 0;
   const isOutOfStock = stockCount <= 0;
   const gallery = product?.main_images || [];
+
+  const handleImageClick = () => {
+    if (window.innerWidth <= 768) {
+      setIsFullScreen(true);
+    }
+  };
 
   const handleAddToCart = async () => {
     if (isOutOfStock) return;
@@ -160,6 +164,14 @@ export default function ProductDetails() {
         <RopeAnimation />
       </header>
 
+      {/* Full Screen Image Overlay (Mobile Only) */}
+      {isFullScreen && (
+        <div className="mobile-fullscreen-overlay" onClick={() => setIsFullScreen(false)}>
+          <span className="close-fullscreen">&times;</span>
+          <img src={mainImage} alt="Full view" className="fullscreen-img" />
+        </div>
+      )}
+
       {showToast && (
         <div style={styles.toast}>
           <div style={styles.toastContent}>
@@ -172,17 +184,23 @@ export default function ProductDetails() {
       <div style={styles.container}>
         <div className="glass-layout-container">
           
-          <div className="glass-thumb-sidebar">
-            {gallery.map((img, i) => (
-              <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={() => setMainImage(img)}>
-                <img src={img} alt="thumb" />
-              </div>
-            ))}
-          </div>
-
           <div className="glass-main-card">
              <div className="glass-image-section">
-                <img src={mainImage} alt={product.name} className="glass-hero-img" />
+                <img 
+                  src={mainImage} 
+                  alt={product.name} 
+                  className="glass-hero-img" 
+                  onClick={handleImageClick} // Trigger Full Screen
+                />
+                
+                {/* Thumbnails moved INSIDE/UNDER the image section for mobile via CSS */}
+                <div className="glass-thumb-sidebar mobile-selector">
+                  {gallery.map((img, i) => (
+                    <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setMainImage(img); }}>
+                      <img src={img} alt="thumb" />
+                    </div>
+                  ))}
+                </div>
              </div>
              
              <div className="glass-controls-section">
@@ -240,6 +258,22 @@ export default function ProductDetails() {
       </div>
 
       <style>{`
+        /* FULLSCREEN MODAL STYLES */
+        .mobile-fullscreen-overlay {
+          position: fixed;
+          top: 0; left: 0; width: 100%; height: 100%;
+          background: #000;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .fullscreen-img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+        .close-fullscreen {
+          position: absolute; top: 20px; right: 30px;
+          color: white; font-size: 40px; font-weight: bold; cursor: pointer;
+        }
+
         .glass-layout-container {
           display: flex;
           gap: 30px;
@@ -247,9 +281,6 @@ export default function ProductDetails() {
           position: relative;
           z-index: 10;
           font-family: 'Poppins', sans-serif;
-          justify-content: flex-start;
-          align-items: flex-start;
-          flex-wrap: wrap;
         }
 
         .glass-thumb-sidebar {
@@ -259,18 +290,13 @@ export default function ProductDetails() {
         }
 
         .glass-thumb-item {
-          width: 70px;
-          height: 70px;
+          width: 70px; height: 70px;
           background: rgba(255,255,255,0.2);
           backdrop-filter: blur(10px);
           border: 1px solid rgba(255,255,255,0.3);
           border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: 0.3s;
-          overflow: hidden;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; overflow: hidden; transition: 0.3s;
         }
         .glass-thumb-item img { width: 80%; }
         .glass-thumb-item.active { border-color: #fff; background: rgba(255,255,255,0.4); }
@@ -281,7 +307,6 @@ export default function ProductDetails() {
           background: rgba(255,255,255,0.1);
           backdrop-filter: blur(25px);
           border: 1px solid rgba(255,255,255,0.3);
-          box-shadow: 0 40px 60px rgba(0,0,0,0.15);
           border-radius: 40px;
           display: flex;
           overflow: hidden;
@@ -290,20 +315,17 @@ export default function ProductDetails() {
         .glass-image-section {
           flex: 1.2;
           display: flex;
+          flex-direction: column; /* Stack img and thumbs vertically for mobile-friendly view */
           align-items: center;
           justify-content: center;
           padding: 40px;
           background: rgba(255,255,255,0.05);
         }
-        .glass-hero-img { width: 100%; transition: 0.5s; }
+        .glass-hero-img { width: 100%; transition: 0.5s; cursor: zoom-in; }
 
         .glass-controls-section {
-          flex: 1;
-          padding: 40px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          text-align: left;
+          flex: 1; padding: 40px;
+          display: flex; flex-direction: column; justify-content: center;
         }
 
         .glass-title { font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 5px; }
@@ -315,7 +337,6 @@ export default function ProductDetails() {
         .stock-dot.out { background-color: #e74c3c; }
         .stock-label { font-size: 13px; font-weight: 600; color: #333; }
 
-        .glass-label { font-size: 10px; font-weight: 800; color: #555; margin-bottom: 8px; text-transform: uppercase; }
         .glass-swatch-row { display: flex; gap: 10px; margin-bottom: 20px; }
         .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; }
         .glass-swatch.selected { outline: 2px solid #000; outline-offset: 2px; }
@@ -327,56 +348,36 @@ export default function ProductDetails() {
         }
         .glass-size-btn.active { background: #000; color: #fff; }
 
-        .glass-action-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-        .glass-cart-btn, .glass-buy-btn {
-          width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer;
-        }
-        .glass-cart-btn { background: #000; color: #fff; border: none; }
-        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; }
+        .glass-cart-btn { background: #000; color: #fff; border: none; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; margin-bottom:10px; }
+        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 
         .bottom-content { margin-top: 60px; padding: 0 20px 0 100px; max-width: 900px; }
 
-        /* MOBILE OPTIMIZATIONS */
+        /* MOBILE OVERRIDES */
         @media (max-width: 768px) {
-          .glass-layout-container {
-            margin-top: -200px;
-            flex-direction: column;
-            align-items: center;
-            padding: 0 20px;
-          }
-
-          .glass-thumb-sidebar {
-            flex-direction: row;
-            order: 2;
-            margin-bottom: 20px;
-          }
-
-          .glass-main-card {
-            flex-direction: column;
-            border-radius: 25px;
+          .glass-layout-container { margin-top: -150px; flex-direction: column; padding: 0 15px; }
+          .glass-main-card { flex-direction: column; border-radius: 25px; }
+          .glass-image-section { padding: 20px; }
+          
+          /* Move selector under image on mobile */
+          .mobile-selector {
+            flex-direction: row !important;
+            margin-top: 20px;
+            overflow-x: auto;
             width: 100%;
+            justify-content: center;
           }
-          
-          /* Title color changed to black for mobile */
-          .glass-title {
-            color: #000000; 
-          }
+          .glass-thumb-item { width: 60px; height: 60px; flex-shrink: 0; }
 
-          .glass-image-section {
-            padding: 20px;
-          }
+          .glass-title { color: #000000; text-align: center; }
+          .glass-price { text-align: center; }
+          .glass-controls-section { padding: 25px; }
+          .bottom-content { padding: 0 20px; text-align: center; }
+        }
 
-          .glass-controls-section {
-            padding: 25px;
-          }
-
-          .bottom-content {
-            padding: 0 20px;
-            text-align: center;
-            margin-top: 40px;
-          }
-          
-          .glass-hero-img:hover { transform: none; }
+        /* Hide the original sidebar on desktop if we are using the one inside image section */
+        @media (min-width: 769px) {
+           .mobile-selector { flex-direction: column; position: absolute; left: -100px; top: 0; }
         }
       `}</style>
     </div>
