@@ -1,195 +1,369 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRive, useStateMachineInput } from '@rive-app/react-canvas';
 import { supabase } from '../supabaseClient';
-import { useNavigate, Link } from 'react-router-dom';
-import { Country, State, City } from 'country-state-city';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showAddress, setShowAddress] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const navigate = useNavigate();
-
-  // Listen for screen size changes
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // --- Form Data ---
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  
+  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  
-  // --- Address States ---
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedState, setSelectedState] = useState('');
-  const [addressLine1, setAddressLine1] = useState('');
-  const [city, setCity] = useState('');
 
-  // --- Rive Animation Setup ---
+  const navigate = useNavigate();
+
   const { rive, RiveComponent } = useRive({
-    src: '/assets/login_animation.riv', 
+    src: '/assets/login_animation.riv',
     stateMachines: "LoginMachine",
     autoplay: true,
   });
 
   const isCovering = useStateMachineInput(rive, "LoginMachine", "isCovering");
-  const lookAmount = useStateMachineInput(rive, "LoginMachine", "lookAmount");
 
-  const handleMouseMove = (e) => {
-    if (lookAmount) {
-      const val = (e.pageX / window.innerWidth) * 100;
-      lookAmount.value = val;
-    }
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) alert(error.message);
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+    if (error) alert(error.message);
+    else alert("Reset link sent to your email.");
+    setLoading(false);
   };
 
   const handleAuth = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
 
     if (isSignUp) {
-      const { data, error } = await supabase.auth.signUp({
+      if (password !== confirmPassword) {
+        alert("Passwords do not match.");
+        setLoading(false);
+        return;
+      }
+      const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name, phone: phone } }
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone,
+          }
+        }
       });
-
-      if (error) {
-        alert(error.message);
-      } else if (data.user) {
-        const countryName = Country.getCountryByCode(selectedCountry)?.name || '';
-        const stateName = State.getStateByCodeAndCountry(selectedState, selectedCountry)?.name || '';
-        const fullAddress = `${addressLine1}, ${city}, ${stateName}, ${countryName}`;
-
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          full_name: name,
-          phone: phone,
-          address: fullAddress
-        });
-        alert("Account created! Let's get those slippers.");
-        navigate('/');
-      }
+      if (error) alert(error.message);
+      else alert("Registration successful. Check your email for verification.");
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) alert(error.message);
-      else navigate('/');
+      if (error) {
+        alert(error.message);
+      } else {
+        navigate('/');
+      }
     }
     setLoading(false);
   };
 
   return (
-    <div style={{...styles.container, flexDirection: isMobile ? 'column' : 'row'}} onMouseMove={handleMouseMove}>
-      
-      {/* LEFT SIDE (Animation/Hero) - Shrunken on Mobile */}
-      <div style={{...styles.leftSide, padding: isMobile ? '20px' : '40px', flex: isMobile ? 'none' : 1.2}}>
-        <div style={styles.heroTextContent}>
-          <h2 style={{...styles.heroText, fontSize: isMobile ? '1.5rem' : '2.2rem'}}>
-            Comfort to your foot,<br/>Feel free to your Heart.
-          </h2>
-        </div>
-      </div>
+    <div style={styles.container}>
+      <style>{rainbowAnimationCSS}</style>
 
-      {/* RIGHT SIDE (Form) - Fully Scrollable */}
-      <div style={{...styles.rightSide, padding: isMobile ? '20px 10px' : '0'}}>
-        <div style={styles.formCard}>
-          <h2 style={styles.title}>{isSignUp ? "Join the Camp" : "Howdy Camper 🤚"}</h2>
-          <p style={styles.subtitle}>Please enter your details.</p>
-
-          <form onSubmit={handleAuth}>
-            <input placeholder="Email Address" type="email" style={styles.input} onChange={e => setEmail(e.target.value)} required />
+      <section className='wrapper'>
+        <div className='hero'></div>
+        
+        <div className='content'>
+          <div style={styles.mainLayout}>
             
-            <div style={styles.passwordWrapper}>
-              <input 
-                placeholder="Password" 
-                type={showPassword ? "text" : "password"} 
-                style={styles.inputNoMargin} 
-                onFocus={() => { if(isCovering) isCovering.value = true }} 
-                onBlur={() => { if(isCovering) isCovering.value = false }} 
-                onChange={e => setPassword(e.target.value)} 
-                required 
-              />
-              <span style={styles.eyeIcon} onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? "👁️" : "🙈"}
-              </span>
+            <div style={styles.brandingSection}>
+              <div style={styles.riveBox}>
+                <RiveComponent style={{ height: '350px' }} />
+              </div>
+              <h2 style={styles.heroText}>
+                Comfort to your foot,<br />Feel free to your Heart.
+              </h2>
             </div>
 
-            {isSignUp && (
-              <div style={{ marginBottom: '20px' }}>
-                <input placeholder="Full Name" style={styles.input} onChange={e => setName(e.target.value)} required />
-                <input placeholder="Phone (Optional)" style={styles.input} onChange={e => setPhone(e.target.value)} />
+            {/* Form Section */}
+            <div style={styles.formSection}>
+              <div style={styles.formCard}>
+                <h2 style={styles.title}>
+                  {isForgotPassword ? "Reset Password" : (isSignUp ? "Create Account" : "Secure Login")}
+                </h2>
                 
-                <button type="button" onClick={() => setShowAddress(!showAddress)} style={styles.toggleBtn}>
-                   {showAddress ? "▲ Hide Address" : "▼ Add Shipping Address"}
-                </button>
-
-                {showAddress && (
-                  <div style={styles.addressBox}>
-                    <input placeholder="Address Line 1" style={styles.inputSmall} onChange={e => setAddressLine1(e.target.value)} />
-                    
-                    <select style={styles.select} onChange={(e) => setSelectedCountry(e.target.value)}>
-                      <option value="">Select Country</option>
-                      {Country.getAllCountries().map((c) => (
-                        <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
-                      ))}
-                    </select>
-
-                    <select style={styles.select} disabled={!selectedCountry} onChange={(e) => setSelectedState(e.target.value)}>
-                      <option value="">Select State</option>
-                      {State.getStatesOfCountry(selectedCountry).map((s) => (
-                        <option key={s.isoCode} value={s.isoCode}>{s.name}</option>
-                      ))}
-                    </select>
-
-                    <select style={styles.select} disabled={!selectedState} onChange={(e) => setCity(e.target.value)}>
-                      <option value="">Select City</option>
-                      {City.getCitiesOfState(selectedCountry, selectedState).map((c) => (
-                        <option key={c.name} value={c.name}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                {!isForgotPassword && (
+                  <>
+                    <button onClick={handleGoogleLogin} style={styles.googleBtn}>
+                      <img 
+                        src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                        alt="" 
+                        style={{ width: '18px', marginRight: '10px' }} 
+                      />
+                      Continue with Google
+                    </button>
+                    <div style={styles.divider}>
+                      <span style={styles.dividerText}>OR</span>
+                    </div>
+                  </>
                 )}
+
+                <form onSubmit={isForgotPassword ? handleResetPassword : handleAuth}>
+                  {isSignUp && !isForgotPassword && (
+                    <>
+                      <input 
+                        placeholder="Full Name" 
+                        style={styles.input} 
+                        onChange={e => setFullName(e.target.value)} 
+                        required 
+                      />
+                      <input 
+                        placeholder="Phone Number (Optional)" 
+                        style={styles.input} 
+                        onChange={e => setPhone(e.target.value)} 
+                      />
+                    </>
+                  )}
+
+                  <input 
+                    placeholder="Email Address" 
+                    type="email" 
+                    style={styles.input} 
+                    onChange={e => setEmail(e.target.value)} 
+                    required 
+                  />
+
+                  {!isForgotPassword && (
+                    <>
+                      <div style={styles.passwordWrapper}>
+                        <input 
+                          placeholder="Password" 
+                          type={showPassword ? "text" : "password"} 
+                          style={styles.inputNoMargin} 
+                          onFocus={() => { if(isCovering) isCovering.value = true }} 
+                          onBlur={() => { if(isCovering) isCovering.value = false }} 
+                          onChange={e => setPassword(e.target.value)} 
+                          required 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowPassword(!showPassword)} 
+                          style={styles.eyeBtn}
+                        >
+                          {showPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+
+                      {isSignUp && (
+                        <input 
+                          placeholder="Repeat Password" 
+                          type="password" 
+                          style={styles.input} 
+                          onChange={e => setConfirmPassword(e.target.value)} 
+                          required 
+                        />
+                      )}
+                    </>
+                  )}
+
+                  {!isSignUp && !isForgotPassword && (
+                    <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+                      <span 
+                        style={styles.forgotText} 
+                        onClick={() => setIsForgotPassword(true)}
+                      >
+                        Forgot password?
+                      </span>
+                    </div>
+                  )}
+
+                  <button type="submit" style={styles.submitBtn} disabled={loading}>
+                    {loading ? "Processing..." : (isForgotPassword ? "Send Link" : (isSignUp ? "Register" : "Login"))}
+                  </button>
+                </form>
+
+                <p style={styles.toggle} onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setIsForgotPassword(false);
+                }}>
+                  {isForgotPassword 
+                    ? "Back to login" 
+                    : (isSignUp ? "Already have an account? Login" : "New here? Create an account")}
+                </p>
               </div>
-            )}
+            </div>
+          </div>
 
-            <button type="submit" style={styles.submitBtn} disabled={loading}>
-              {loading ? "Loading..." : (isSignUp ? "Create Account" : "Login & Shop")}
-            </button>
-          </form>
-
-          <p style={styles.toggle} onClick={() => setIsSignUp(!isSignUp)}>
-            {isSignUp ? "Already have an account? Login" : "New to Slipper Haven? Signup"}
-          </p>
+          <div style={styles.bottomControls}>
+            <input type='checkbox' id='switch' />
+            <label htmlFor='switch' style={styles.switchLabel}>
+              <span><span className='icon'>→</span> switch bg</span>
+            </label>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
+const rainbowAnimationCSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap');
+
+  @keyframes smoothBg {
+    from { background-position: 50% 50%, 50% 50%; }
+    to { background-position: 350% 50%, 350% 50%; }
+  }
+
+  .wrapper {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    --stripe-color: #fff;
+    --stripes: repeating-linear-gradient(100deg, var(--stripe-color) 0%, var(--stripe-color) 7%, transparent 10%, transparent 12%, var(--stripe-color) 16%);
+    --rainbow: repeating-linear-gradient(100deg, #60a5fa 10%, #e879f9 15%, #60a5fa 20%, #5eead4 25%, #60a5fa 30%);
+    background-image: var(--stripes), var(--rainbow);
+    background-size: 300%, 200%;
+    filter: blur(10px) invert(100%);
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(100deg, #fff 0%, #fff 7%, transparent 10%, transparent 12%, #fff 16%), 
+                      repeating-linear-gradient(100deg, #60a5fa 10%, #e879f9 15%, #60a5fa 20%, #5eead4 25%, #60a5fa 30%);
+    background-size: 200%, 100%;
+    animation: smoothBg 60s linear infinite;
+    mix-blend-mode: difference;
+  }
+
+  .content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+  }
+
+  #switch { appearance: none; opacity: 0; position: absolute; }
+  .icon { border: 1px dashed white; padding: 5px; margin-right: 5px; }
+  
+  :has(#switch:checked) .hero { filter: blur(10px) opacity(50%) saturate(200%); --stripe-color: #000; }
+`;
+
 const styles = {
-  container: { display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", backgroundColor: '#fff' },
-  leftSide: { backgroundColor: '#f8faff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-  brand: { fontWeight: 'bold', fontSize: '20px', color: '#333', alignSelf: 'flex-start', marginBottom: '20px' },
-  riveBox: { width: '100%', maxWidth: '400px', margin: '0 auto' },
-  heroTextContent: { textAlign: 'center', marginTop: '20px' },
-  heroText: { fontWeight: '800', color: '#1a1a1a', lineHeight: 1.2 },
-  rightSide: { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', backgroundColor: '#fff' },
-  formCard: { width: '100%', maxWidth: '380px', padding: '40px 20px' },
-  title: { fontSize: '28px', marginBottom: '10px', fontWeight: 'bold' },
-  subtitle: { color: '#666', marginBottom: '30px' },
-  input: { width: '100%', padding: '15px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '15px', boxSizing: 'border-box', fontSize: '16px' },
-  passwordWrapper: { display: 'flex', alignItems: 'center', border: '1px solid #eee', borderRadius: '12px', paddingRight: '15px', marginBottom: '20px' },
-  inputNoMargin: { width: '100%', padding: '15px', border: 'none', borderRadius: '12px', outline: 'none', fontSize: '16px' },
-  eyeIcon: { cursor: 'pointer', fontSize: '18px' },
-  toggleBtn: { background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: '600', marginBottom: '15px', display: 'block' },
-  addressBox: { backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '12px', marginBottom: '15px', border: '1px solid #f0f0f0' },
-  inputSmall: { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', boxSizing: 'border-box' },
-  select: { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', backgroundColor: '#fff' },
-  submitBtn: { width: '100%', padding: '15px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' },
-  toggle: { textAlign: 'center', marginTop: '20px', cursor: 'pointer', color: '#2563eb', fontWeight: '600' }
+  container: { width: '100vw', height: '100vh', overflow: 'hidden' },
+  mainLayout: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    flex: 1,
+    padding: '0 8%',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  brandingSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    flex: 1,
+    paddingBottom: '100px',
+    justifyContent: 'center',
+    height: '10%'
+  },
+  formSection: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    flex: 1
+  },
+  riveBox: { width: '100%', maxWidth: '400px', height: '350px' },
+  heroText: { 
+    fontFamily: '"Dancing Script", cursive',
+    fontWeight: '700', 
+    color: '#000000',
+    fontSize: '2.8rem',
+    marginTop: '-40px',
+    lineHeight: '1.2'
+  },
+  formCard: { 
+    backgroundColor: 'rgba(255, 255, 255, 0.94)', 
+    padding: '35px', 
+    borderRadius: '28px', 
+    boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
+    width: '100%',
+    maxWidth: '420px',
+    backdropFilter: 'blur(15px)',
+  },
+  title: { fontSize: '26px', fontWeight: 'bold', marginBottom: '20px', color: '#1a1a1a', textAlign: 'center' },
+  googleBtn: { 
+    width: '100%', 
+    padding: '12px', 
+    borderRadius: '12px', 
+    border: '1px solid #ddd', 
+    backgroundColor: '#fff', 
+    cursor: 'pointer', 
+    fontSize: '14px', 
+    fontWeight: '600', 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    marginBottom: '15px'
+  },
+  divider: { 
+    width: '100%', 
+    textAlign: 'center', 
+    borderBottom: '1px solid #eee', 
+    lineHeight: '0.1em', 
+    margin: '10px 0 20px' 
+  },
+  dividerText: { background: '#fff', padding: '0 10px', color: '#999', fontSize: '12px' },
+  input: { width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #ddd', marginBottom: '14px', boxSizing: 'border-box', fontSize: '15px' },
+  passwordWrapper: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    border: '1px solid #ddd', 
+    borderRadius: '12px', 
+    marginBottom: '14px', 
+    overflow: 'hidden' 
+  },
+  inputNoMargin: { flex: 1, padding: '14px', border: 'none', outline: 'none', fontSize: '15px' },
+  eyeBtn: { 
+    padding: '0 15px', 
+    backgroundColor: 'transparent', 
+    border: 'none', 
+    color: '#00bee1', 
+    cursor: 'pointer', 
+    fontWeight: '600', 
+    fontSize: '12px' 
+  },
+  forgotText: { color: '#00bee1', fontSize: '13px', cursor: 'pointer', fontWeight: '500' },
+  submitBtn: { width: '100%', padding: '16px', backgroundColor: '#00bee1', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' },
+  toggle: { textAlign: 'center', marginTop: '20px', cursor: 'pointer', color: '#666', fontSize: '14px' },
+  bottomControls: {
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '5px'
+  },
+  switchLabel: { color: 'white', cursor: 'pointer', mixBlendMode: 'difference', fontSize: '14px' }
 };

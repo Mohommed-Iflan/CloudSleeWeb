@@ -272,7 +272,7 @@ export default function ProductDetails() {
         </div>
 
         <div style={{ ...styles.trustItem, borderRight: 'none' }}>
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Sri-lanka_-_Delapouite_-_game-icons.svg/640px-Sri-lanka_-_Delapouite_-_game-icons.svg.png" alt="Sri Lanka" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+          <img src="https://bewdtedexomudpelsrxj.supabase.co/storage/v1/object/public/icons/sri-lanka-country-map-thick-outline-icon-vector-50459471.jpg" alt="Sri Lanka" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
           <div style={styles.trustText}>
             <strong>Islandwide Delivery</strong>
             <span>All over Sri Lanka</span>

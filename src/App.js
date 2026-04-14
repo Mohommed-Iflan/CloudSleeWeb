@@ -12,16 +12,23 @@ import ReviewPage from './pages/ReviewPage';
 import ReturnPage from './pages/ReturnPage';
 import ProductDetails from './pages/ProductDetails';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer'; // 1. IMPORT FOOTER
+import Footer from './components/Footer'; 
 import SearchResults from './pages/SearchResults';
 import Cart from './pages/Cart';
 import AddProduct from './pages/AddProduct';
 import AdminProducts from './pages/AdminProducts'; 
 import AdminOrders from './pages/AdminOrders';
 import AllProducts from './pages/AllProducts';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import ScrollToTop from './components/ScrollToTop';
+import ContactUs from './pages/ContactUs';
+import Settings from './pages/Settings';
 
+
+
+// Helper component for Admin Access
 const AdminRoute = ({ children, user, adminEmail }) => {
-  if (!user) return null; 
+  if (!user) return <Navigate to="/login" replace />; 
   if (user.email !== adminEmail) {
     return <Navigate to="/" replace />;
   }
@@ -30,27 +37,42 @@ const AdminRoute = ({ children, user, adminEmail }) => {
 
 function App() {
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true); 
   const ADMIN_EMAIL = "mohommediflaan@gmail.com";
 
   useEffect(() => {
+    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
     });
 
-    return () => authListener.subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
+
+  if (authLoading) {
+    return (
+      <div style={loaderStyles}>
+        <div className="spinner"></div>
+        <p>Loading session...</p>
+      </div>
+    );
+  }
 
   return (
     <Router>
-      {/* 2. WRAPPER FOR STICKY FOOTER */}
+      <ScrollToTop />
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Navbar />
+        <Navbar user={user} />
         
-        {/* 3. MAIN CONTENT GROWS TO FILL SPACE */}
         <main style={{ flex: 1 }}>
           <Routes>
             {/* Public Routes */}
@@ -58,19 +80,36 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/product/:productId" element={<ProductDetails />} />
             <Route path="/search" element={<SearchResults />} />
-            <Route path="/cart" element={<Cart />} />
+            <Route path="/cart" element={<Cart user={user} />} />
             <Route path="/all-products" element={<AllProducts />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/contact" element={<ContactUs />} />
             
-            {/* Order & Checkout Routes */}
-            <Route path="/checkout" element={<Checkout />} />
+            {/* Protected User Routes */}
+            <Route path="/settings" element={user ? <Settings user={user} /> : <Navigate to="/login" />} />
+            <Route path="/checkout" element={user ? <Checkout user={user} /> : <Navigate to="/login" />} />
             <Route path="/success" element={<Success />} />
-            <Route path="/my-orders" element={<MyOrders />} />
-            <Route path="/review/:orderId" element={<ReviewPage />} />
-            <Route path="/return/:orderId" element={<ReturnPage />} />
+            <Route path="/my-orders" element={user ? <MyOrders user={user} /> : <Navigate to="/login" />} />
+            <Route path="/review/:orderId" element={user ? <ReviewPage user={user} /> : <Navigate to="/login" />} />
+            <Route path="/return/:orderId" element={user ? <ReturnPage user={user} /> : <Navigate to="/login" />} />
 
             {/* Protected Admin Routes */}
-            <Route path="/admin/orders" element={<AdminOrders />} />
-            <Route path="/admin" element={<AdminProducts />} />
+            <Route 
+              path="/admin/orders" 
+              element={
+                <AdminRoute user={user} adminEmail={ADMIN_EMAIL}>
+                  <AdminOrders />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin" 
+              element={
+                <AdminRoute user={user} adminEmail={ADMIN_EMAIL}>
+                  <AdminProducts />
+                </AdminRoute>
+              } 
+            />
             <Route 
               path="/admin/add-product" 
               element={
@@ -80,15 +119,26 @@ function App() {
               } 
             />
 
+            {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
 
-        {/* 4. FOOTER SHOWS ON ALL PAGES */}
         <Footer />
       </div>
     </Router>
   );
 }
+
+const loaderStyles = { 
+  display: 'flex', 
+  flexDirection: 'column',
+  justifyContent: 'center', 
+  alignItems: 'center', 
+  height: '100vh', 
+  fontFamily: "'Inter', sans-serif",
+  color: '#666',
+  gap: '15px'
+};
 
 export default App;

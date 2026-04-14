@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+
 // Import professional icons including Menu and X for mobile
 import { 
   Search, 
@@ -17,6 +18,7 @@ import {
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation(); // Hook to track current URL
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,6 +26,9 @@ export default function Navbar() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const ADMIN_EMAIL = "mohommediflaan@gmail.com";
+
+  // Check if current page is the login page
+  const isLoginPage = location.pathname === '/login';
 
   // Listen for screen size changes to toggle mobile logic
   useEffect(() => {
@@ -107,7 +112,8 @@ export default function Navbar() {
             <span style={styles.navText}>CART</span>
           </div>
           
-          {user ? (
+          {/* LOGIC FIX: Check user existence AND that we are not currently on the login page */}
+          {user && !isLoginPage ? (
             <div 
               style={styles.dropdownWrapper} 
               // Toggle on click for mobile, hover for desktop
