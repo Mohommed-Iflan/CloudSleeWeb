@@ -77,25 +77,25 @@ export default function Login() {
 
   return (
     <div style={styles.container}>
-      <style>{responsiveCSS}</style>
+      <style>{rainbowAnimationCSS}</style>
 
       <section className='wrapper'>
         <div className='hero'></div>
         
         <div className='content'>
-          <div className="main-layout">
+          <div style={styles.mainLayout}>
             
-            <div className="branding-section">
-              <div className="rive-box">
-                <RiveComponent style={{ height: '100%' }} />
+            <div style={styles.brandingSection}>
+              <div style={styles.riveBox}>
+                <RiveComponent style={{ height: '350px' }} />
               </div>
-              <h2 className="hero-text">
+              <h2 style={styles.heroText}>
                 Comfort to your foot,<br />Feel free to your Heart.
               </h2>
             </div>
 
             {/* Form Section */}
-            <div className="form-section">
+            <div style={styles.formSection}>
               <div style={styles.formCard}>
                 <h2 style={styles.title}>
                   {isForgotPassword ? "Reset Password" : (isSignUp ? "Create Account" : "Secure Login")}
@@ -215,8 +215,7 @@ export default function Login() {
   );
 }
 
-// Optimized CSS with Media Queries
-const responsiveCSS = `
+const rainbowAnimationCSS = `
   @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap');
 
   @keyframes smoothBg {
@@ -228,14 +227,13 @@ const responsiveCSS = `
     width: 100vw;
     height: 100vh;
     position: relative;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
   .hero {
     width: 100%;
     height: 100%;
-    position: fixed; /* Fixed so it doesn't scroll with content */
+    position: absolute;
     inset: 0;
     --stripe-color: #fff;
     --stripes: repeating-linear-gradient(100deg, var(--stripe-color) 0%, var(--stripe-color) 7%, transparent 10%, transparent 12%, var(--stripe-color) 16%);
@@ -257,99 +255,63 @@ const responsiveCSS = `
   }
 
   .content {
-    position: relative;
-    min-height: 100vh;
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
     z-index: 2;
-  }
-
-  /* Responsive Main Layout */
-  .main-layout {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-around;
-    flex: 1;
-    padding: 20px 8%;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .branding-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    flex: 1;
-    justify-content: center;
-  }
-
-  .form-section {
-    display: flex;
-    justify-content: flex-end;
-    flex: 1;
-  }
-
-  .rive-box { width: 100%; maxWidth: 400px; height: 350px; }
-  
-  .hero-text { 
-    font-family: '"Dancing Script", cursive';
-    fontWeight: 700; 
-    color: #000000;
-    font-size: 2.8rem;
-    margin-top: -40px;
-    line-height: 1.2;
   }
 
   #switch { appearance: none; opacity: 0; position: absolute; }
   .icon { border: 1px dashed white; padding: 5px; margin-right: 5px; }
   
   :has(#switch:checked) .hero { filter: blur(10px) opacity(50%) saturate(200%); --stripe-color: #000; }
-
-  /* MOBILE TABLET ADJUSTMENTS */
-  @media (max-width: 968px) {
-    .main-layout {
-      flex-direction: column;
-      padding: 40px 5%;
-    }
-    .branding-section {
-      margin-bottom: 20px;
-    }
-    .form-section {
-      justify-content: center;
-      width: 100%;
-    }
-    .hero-text {
-      font-size: 2rem;
-      margin-top: 0;
-    }
-    .rive-box {
-      height: 250px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .hero-text {
-      font-size: 1.6rem;
-    }
-    .rive-box {
-      height: 200px;
-    }
-  }
 `;
 
 const styles = {
   container: { width: '100vw', height: '100vh', overflow: 'hidden' },
+  mainLayout: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    flex: 1,
+    padding: '0 8%',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  brandingSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    flex: 1,
+    paddingBottom: '100px',
+    justifyContent: 'center',
+    height: '10%'
+  },
+  formSection: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    flex: 1
+  },
+  riveBox: { width: '100%', maxWidth: '400px', height: '350px' },
+  heroText: { 
+    fontFamily: '"Dancing Script", cursive',
+    fontWeight: '700', 
+    color: '#000000',
+    fontSize: '2.8rem',
+    marginTop: '-40px',
+    lineHeight: '1.2'
+  },
   formCard: { 
     backgroundColor: 'rgba(255, 255, 255, 0.94)', 
-    padding: '30px', 
+    padding: '35px', 
     borderRadius: '28px', 
     boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
     width: '100%',
     maxWidth: '420px',
     backdropFilter: 'blur(15px)',
-    margin: '0 auto'
   },
   title: { fontSize: '26px', fontWeight: 'bold', marginBottom: '20px', color: '#1a1a1a', textAlign: 'center' },
   googleBtn: { 
@@ -401,8 +363,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '5px',
-    marginTop: 'auto'
+    gap: '5px'
   },
   switchLabel: { color: 'white', cursor: 'pointer', mixBlendMode: 'difference', fontSize: '14px' }
 };
