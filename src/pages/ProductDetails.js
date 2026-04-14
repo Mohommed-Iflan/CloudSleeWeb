@@ -158,7 +158,6 @@ export default function ProductDetails() {
     <div style={styles.pageWrapper}>
       <header style={styles.heroHeader}>
         <RopeAnimation />
-        {/* Removed Hero Title from here */}
       </header>
 
       {showToast && (
@@ -193,11 +192,10 @@ export default function ProductDetails() {
                 </div>
 
                 <div className="glass-selectors">
-                   {/* STOCK DISPLAY ADDED HERE */}
                    <div className="stock-container">
                       <span className={`stock-dot ${isOutOfStock ? 'out' : 'in'}`}></span>
                       <span className="stock-label">
-                        {isOutOfStock ? 'Out of Stock' : `${stockCount} items in stock`}
+                        {isOutOfStock ? 'Out of Stock' : `${stockCount} in stock`}
                       </span>
                    </div>
 
@@ -244,9 +242,8 @@ export default function ProductDetails() {
       <style>{`
         .glass-layout-container {
           display: flex;
-          padding: 100px;
           gap: 30px;
-          margin-top: -380px; /* Moved much higher up */
+          margin-top: -320px;
           position: relative;
           z-index: 10;
           font-family: 'Poppins', sans-serif;
@@ -280,8 +277,7 @@ export default function ProductDetails() {
 
         .glass-main-card {
           flex: 1;
-          max-width: 2000px;
-          min-height: 300px;
+          max-width: 1500px;
           background: rgba(255,255,255,0.1);
           backdrop-filter: blur(25px);
           border: 1px solid rgba(255,255,255,0.3);
@@ -299,8 +295,7 @@ export default function ProductDetails() {
           padding: 40px;
           background: rgba(255,255,255,0.05);
         }
-        .glass-hero-img { width: 100%; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .glass-hero-img:hover { transform: scale(1.1) rotate(-5deg); }
+        .glass-hero-img { width: 100%; transition: 0.5s; }
 
         .glass-controls-section {
           flex: 1;
@@ -309,42 +304,75 @@ export default function ProductDetails() {
           flex-direction: column;
           justify-content: center;
           text-align: left;
-          background: rgba(255,255,255,0.05);
         }
 
         .glass-title { font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 5px; }
         .glass-price { font-size: 20px; font-weight: 700; color: #ff4d4d; margin-bottom: 20px; }
 
-        .stock-container { display: flex; alignItems: center; gap: 8px; margin-bottom: 20px; }
-        .stock-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .stock-container { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        .stock-dot { width: 10px; height: 10px; border-radius: 50%; }
         .stock-dot.in { background-color: #27ae60; }
         .stock-dot.out { background-color: #e74c3c; }
         .stock-label { font-size: 13px; font-weight: 600; color: #333; }
 
         .glass-label { font-size: 10px; font-weight: 800; color: #555; margin-bottom: 8px; text-transform: uppercase; }
         .glass-swatch-row { display: flex; gap: 10px; margin-bottom: 20px; }
-        .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; }
         .glass-swatch.selected { outline: 2px solid #000; outline-offset: 2px; }
 
         .glass-size-row { display: flex; gap: 8px; margin-bottom: 30px; }
         .glass-size-btn { 
           width: 38px; height: 38px; background: #fff; border: none; border-radius: 8px; 
-          font-weight: 800; font-size: 11px; cursor: pointer; transition: 0.2s;
+          font-weight: 800; font-size: 11px; cursor: pointer;
         }
         .glass-size-btn.active { background: #000; color: #fff; }
 
         .glass-action-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-        .glass-cart-btn {
-          width: 100%; padding: 14px; background: #000; color: #fff; border: none;
-          border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s;
+        .glass-cart-btn, .glass-buy-btn {
+          width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer;
         }
-        .glass-buy-btn {
-          width: 100%; padding: 14px; background: transparent; color: #000; 
-          border: 2px solid #000; border-radius: 12px; font-weight: 700; cursor: pointer;
-        }
-        .glass-cart-btn:hover { background: #333; }
+        .glass-cart-btn { background: #000; color: #fff; border: none; }
+        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; }
 
-        .bottom-content { margin-top: 60px; padding-left: 100px; max-width: 900px; }
+        .bottom-content { margin-top: 60px; padding: 0 20px 0 100px; max-width: 900px; }
+
+        /* MOBILE OPTIMIZATIONS */
+        @media (max-width: 768px) {
+          .glass-layout-container {
+            margin-top: -200px;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 20px;
+          }
+
+          .glass-thumb-sidebar {
+            flex-direction: row;
+            order: 2; /* Move thumbnails below main image */
+            margin-bottom: 20px;
+          }
+
+          .glass-main-card {
+            flex-direction: column;
+            border-radius: 25px;
+            width: 100%;
+          }
+
+          .glass-image-section {
+            padding: 20px;
+          }
+
+          .glass-controls-section {
+            padding: 25px;
+          }
+
+          .bottom-content {
+            padding: 0 20px;
+            text-align: center;
+            margin-top: 40px;
+          }
+          
+          .glass-hero-img:hover { transform: none; } /* Disable hover on mobile */
+        }
       `}</style>
     </div>
   );
@@ -353,12 +381,12 @@ export default function ProductDetails() {
 const styles = {
   pageWrapper: { backgroundColor: '#fff', minHeight: '100vh', paddingBottom: '100px' },
   heroHeader: { 
-    height: '400px', backgroundColor: '#000', position: 'relative', 
+    height: '350px', backgroundColor: '#000', position: 'relative', 
     display: 'flex', alignItems: 'center', justifyContent: 'center' 
   },
-  container: { maxWidth: '1400px', margin: '0 auto', padding: '0 40px' },
+  container: { maxWidth: '1400px', margin: '0 auto' },
   sectionTitle: { fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '15px' },
   description: { lineHeight: '1.6', color: '#666', fontSize: '14px' },
-  toast: { position: 'fixed', top: '30px', right: '30px', backgroundColor: '#000', color: '#fff', padding: '20px', borderRadius: '15px', zIndex: 1000 },
-  toastLink: { marginLeft: '15px', background: '#fff', border: 'none', padding: '5px 10px', borderRadius: '5px', fontWeight: '900', cursor: 'pointer' }
+  toast: { position: 'fixed', top: '20px', right: '20px', left: '20px', backgroundColor: '#000', color: '#fff', padding: '15px', borderRadius: '12px', zIndex: 1000 },
+  toastLink: { marginLeft: '10px', background: '#fff', border: 'none', padding: '5px 10px', borderRadius: '5px', fontWeight: '900' }
 };
