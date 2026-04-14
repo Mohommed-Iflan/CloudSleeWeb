@@ -9,7 +9,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   
-  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -77,15 +76,15 @@ export default function Login() {
 
   return (
     <div style={styles.container}>
-      <style>{rainbowAnimationCSS}</style>
+      <style>{responsiveCSS}</style>
 
       <section className='wrapper'>
         <div className='hero'></div>
         
         <div className='content'>
-          <div style={styles.mainLayout}>
+          <div className="main-layout" style={styles.mainLayout}>
             
-            <div style={styles.brandingSection}>
+            <div className="branding-section" style={styles.brandingSection}>
               <div style={styles.riveBox}>
                 <RiveComponent style={{ height: '350px' }} />
               </div>
@@ -95,7 +94,7 @@ export default function Login() {
             </div>
 
             {/* Form Section */}
-            <div style={styles.formSection}>
+            <div className="form-section" style={styles.formSection}>
               <div style={styles.formCard}>
                 <h2 style={styles.title}>
                   {isForgotPassword ? "Reset Password" : (isSignUp ? "Create Account" : "Secure Login")}
@@ -215,7 +214,8 @@ export default function Login() {
   );
 }
 
-const rainbowAnimationCSS = `
+// Updated CSS with Mobile-First or responsive logic
+const responsiveCSS = `
   @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap');
 
   @keyframes smoothBg {
@@ -260,6 +260,36 @@ const rainbowAnimationCSS = `
     display: flex;
     flex-direction: column;
     z-index: 2;
+    overflow-y: auto; /* Allow scrolling on mobile */
+  }
+
+  /* MOBILE OVERRIDES */
+  @media (max-width: 768px) {
+    .main-layout {
+      flex-direction: column-reverse !important; /* Form on top, Branding on bottom */
+      padding: 40px 5% !important;
+      justify-content: flex-start !important;
+      height: auto !important;
+    }
+    
+    .form-section {
+      width: 100%;
+      justify-content: center !important;
+      margin-bottom: 40px;
+    }
+
+    .branding-section {
+      padding-bottom: 40px !important;
+      height: auto !important;
+    }
+
+    .rive-box {
+      height: 250px !important;
+    }
+
+    h2 {
+       font-size: 2rem !important;
+    }
   }
 
   #switch { appearance: none; opacity: 0; position: absolute; }
@@ -288,14 +318,13 @@ const styles = {
     flex: 1,
     paddingBottom: '100px',
     justifyContent: 'center',
-    height: '10%'
   },
   formSection: {
     display: 'flex',
     justifyContent: 'flex-end',
     flex: 1
   },
-  riveBox: { width: '100%', maxWidth: '400px', height: '350px' },
+  riveBox: { width: '100%', maxWidth: '400px' },
   heroText: { 
     fontFamily: '"Dancing Script", cursive',
     fontWeight: '700', 
