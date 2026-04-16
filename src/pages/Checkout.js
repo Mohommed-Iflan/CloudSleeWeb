@@ -105,10 +105,12 @@ export default function Checkout() {
       
       const finalItems = orderItems.map(item => ({
         ...item,
+        name: item.products?.name || item.name || "Product",
+        price: Number(item.price_at_addition || item.price),
         image_url: item.display_image || item.image || item.image_url || item.products?.main_images?.[0]
       }));
 
-      // FIX 1: Ensure error name matches (error vs orderError)
+      // 1. Create the order
       const { data: order, error: insertError } = await supabase.from('orders').insert([{
         user_id: user.id,
         items: finalItems,
@@ -124,21 +126,23 @@ export default function Checkout() {
 
       if (insertError) throw insertError;
 
-      // FIX 2: Correct callback syntax for .map()
+      // 2. Trigger the Deno Edge Function (Email)
+      await supabase.functions.invoke('send-order-email', {
+        body: {
+          record: order,
+          old_record: null,
+          type: 'INSERT'
+        }
+      });
+
+      // 3. Clear the cart items
       const itemIdsToRemove = orderItems.map(item => item.id);
+      await supabase.from('cart_items').delete().in('id', itemIdsToRemove);
 
-      const { error: cartError } = await supabase
-        .from('cart_items') // Changed to match your screenshot
-        .delete()
-        .in('id', itemIdsToRemove);
-
-      if (cartError) {
-        console.error("Order Placed, but failed to clear cart:", cartError);
-      }
-
+      // 4. Animation Delay and Redirect
       setTimeout(() => {
         navigate('/success', { state: { orderId: order.id } });
-      }, 9500);
+      }, 5000);
 
     } catch (err) {
       setIsAnimating(false);
@@ -341,6 +345,7 @@ export default function Checkout() {
   );
 }
 
+// Keep your styles object exactly as it was
 const styles = {
   container: { padding: '20px 5%', maxWidth: '1400px', margin: 'auto', fontFamily: 'Inter, sans-serif' },
   mainTitle: { fontSize: '24px', fontWeight: '900', marginBottom: '20px', letterSpacing: '-0.5px' },

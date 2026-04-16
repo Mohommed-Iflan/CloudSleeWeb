@@ -30,15 +30,33 @@ export default function Login() {
     if (error) alert(error.message);
   };
 
+  /**
+   * UPDATED: HANDLE RESET PASSWORD
+   * This now triggers the OTP flow and redirects to your 
+   * custom OTP verification page.
+   */
   const handleResetPassword = async (e) => {
     e.preventDefault();
+    if (!email) return alert("Please enter your email first.");
+    
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
-    if (error) alert(error.message);
-    else alert("Reset link sent to your email.");
-    setLoading(false);
+    try {
+      // 1. We trigger the reset request
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+      if (error) throw error;
+
+      // 2. Store email so the Reset page knows which account we are verifying
+      sessionStorage.setItem('resetEmail', email);
+
+      // 3. Move to the OTP verification page you created
+      navigate('/reset-password');
+
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAuth = async (e) => {
@@ -74,6 +92,7 @@ export default function Login() {
     setLoading(false);
   };
 
+  // ... (Rest of your component JSX remains exactly the same)
   return (
     <div style={styles.container}>
       <style>{responsiveCSS}</style>
@@ -186,7 +205,7 @@ export default function Login() {
                   )}
 
                   <button type="submit" style={styles.submitBtn} disabled={loading}>
-                    {loading ? "Processing..." : (isForgotPassword ? "Send Link" : (isSignUp ? "Register" : "Login"))}
+                    {loading ? "Processing..." : (isForgotPassword ? "Get Reset Code" : (isSignUp ? "Register" : "Login"))}
                   </button>
                 </form>
 
@@ -214,7 +233,7 @@ export default function Login() {
   );
 }
 
-// Updated CSS with Mobile-First or responsive logic
+// ... (Rest of styles and CSS remain the same)
 const responsiveCSS = `
   @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap');
 
@@ -260,33 +279,28 @@ const responsiveCSS = `
     display: flex;
     flex-direction: column;
     z-index: 2;
-    overflow-y: auto; /* Allow scrolling on mobile */
+    overflow-y: auto;
   }
 
-  /* MOBILE OVERRIDES */
   @media (max-width: 768px) {
     .main-layout {
-      flex-direction: column-reverse !important; /* Form on top, Branding on bottom */
+      flex-direction: column-reverse !important;
       padding: 40px 5% !important;
       justify-content: flex-start !important;
       height: auto !important;
     }
-    
     .form-section {
       width: 100%;
       justify-content: center !important;
       margin-bottom: 40px;
     }
-
     .branding-section {
       padding-bottom: 40px !important;
       height: auto !important;
     }
-
     .rive-box {
       height: 250px !important;
     }
-
     h2 {
        font-size: 2rem !important;
     }
@@ -294,7 +308,6 @@ const responsiveCSS = `
 
   #switch { appearance: none; opacity: 0; position: absolute; }
   .icon { border: 1px dashed white; padding: 5px; margin-right: 5px; }
-  
   :has(#switch:checked) .hero { filter: blur(10px) opacity(50%) saturate(200%); --stripe-color: #000; }
 `;
 

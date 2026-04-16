@@ -58,14 +58,18 @@ const Settings = ({ user }) => {
     }
   };
 
+  /**
+   * UPDATED: OTP REDIRECT LOGIC
+   * Instead of a direct reset, we prep the session and move to your custom OTP page.
+   */
   const handlePasswordReset = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) throw error;
-      alert(`A link has been sent to ${user.email}`);
+      // 1. Store email in sessionStorage for the ResetPassword page to read
+      sessionStorage.setItem('resetEmail', user.email);
+      
+      // 2. Navigate to your custom reset page (where the Send OTP button exists)
+      navigate('/reset-password'); 
     } catch (err) {
       alert(err.message);
     } finally {
@@ -133,30 +137,24 @@ const Settings = ({ user }) => {
         .container { max-width: 1100px; margin: 0 auto; }
         .page-header { margin-bottom: 32px; }
         .page-header h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
-        
         .layout { display: flex; gap: 40px; }
-        .sidebar { width: 240px; display: flex; flexDirection: column; gap: 8px; }
+        .sidebar { width: 240px; display: flex; flex-direction: column; gap: 8px; }
         .tab-btn { border: none; background: none; padding: 12px 16px; border-radius: 10px; text-align: left; font-weight: 600; cursor: pointer; color: #64748b; transition: 0.2s; }
         .tab-btn:hover { background: #f1f5f9; color: #0f172a; }
         .tab-btn.active { background: #fff; color: #00bee1; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        
         .content-card { flex: 1; background: #fff; border-radius: 24px; padding: 40px; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); border: 1px solid #f1f5f9; }
         .section-title { font-size: 20px; font-weight: 700; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
-        
         .form-group { margin-bottom: 20px; }
         .label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #475569; }
         .input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 15px; transition: 0.2s; outline: none; box-sizing: border-box;}
-        .input:focus { border-color: #00bee1; ring: 2px solid #00bee122; }
-        
+        .input:focus { border-color: #00bee1; box-shadow: 0 0 0 3px rgba(0, 190, 225, 0.1); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .btn-primary { background: #0f172a; color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn-outline { background: #fff; border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-        
         .address-card { border: 1px solid #f1f5f9; border-radius: 16px; padding: 20px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
         .address-card:hover { border-color: #00bee1; }
         .badge { background: #e0faff; color: #008fa9; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; margin-left: 8px; }
-        
         @media (max-width: 768px) {
           .layout { flex-direction: column; }
           .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding-bottom: 10px; }
@@ -164,7 +162,6 @@ const Settings = ({ user }) => {
           .content-card { padding: 24px; }
           .grid-2 { grid-template-columns: 1fr; }
         }
-        
         .loader { text-align: center; padding: 100px; font-weight: 600; color: #64748b; }
       `}</style>
 
@@ -259,9 +256,13 @@ const Settings = ({ user }) => {
               <section>
                 <h2 className="section-title">Security & Privacy</h2>
                 <div style={{background: '#f8fafc', padding: '24px', borderRadius: '16px', marginBottom: '24px'}}>
-                  <h3 style={{fontSize: '16px', marginBottom: '8px'}}>Password</h3>
-                  <p style={{fontSize: '14px', color: '#64748b', marginBottom: '16px'}}>We will send a link to <b>{user.email}</b> to reset your password.</p>
-                  <button className="btn-primary" onClick={handlePasswordReset}>Change Password</button>
+                  <h3 style={{fontSize: '16px', marginBottom: '8px'}}>Password Settings</h3>
+                  <p style={{fontSize: '14px', color: '#64748b', marginBottom: '16px'}}>
+                    Protect your account. You will be redirected to our secure 2-step verification page to reset your password.
+                  </p>
+                  <button className="btn-primary" onClick={handlePasswordReset}>
+                    Change Password via OTP
+                  </button>
                 </div>
                 
                 <div style={{border: '1px solid #fee2e2', padding: '24px', borderRadius: '16px'}}>

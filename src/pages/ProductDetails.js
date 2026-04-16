@@ -58,7 +58,7 @@ const RopeAnimation = () => {
 
     const init = () => {
       canvas.width = window.innerWidth;
-      canvas.height = 300;
+      canvas.height = 350;
       ropes = [];
       const totalRopes = canvas.width * 0.05;
       for (let i = 0; i < totalRopes; i++) {
@@ -96,7 +96,10 @@ const RopeAnimation = () => {
     };
     init(); animate();
     window.addEventListener('mousemove', handleMouse);
-    return () => window.removeEventListener('mousemove', handleMouse);
+    return () => {
+      window.removeEventListener('mousemove', handleMouse);
+      window.removeEventListener('resize', init);
+    };
   }, []);
 
   return <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, pointerEvents: 'none' }} />;
@@ -105,32 +108,73 @@ const RopeAnimation = () => {
 export default function ProductDetails() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  
+  // --- STATE ---
   const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  
+  // Lightbox State
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      // Fetch Product
       const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
       if (prod) {
         setProduct(prod);
         setMainImage(prod.main_images?.[0] || "");
       }
+      // Fetch Reviews (Assuming a 'reviews' table exists)
+      const { data: revs } = await supabase.from('reviews').select('*').eq('product_id', productId).order('created_at', { ascending: false });
+      if (revs) setReviews(revs);
+      
       setLoading(false);
     };
     fetchData();
   }, [productId]);
 
+  // --- DERIVED STATE ---
   const currentVariant = product?.variant_data?.[selectedColorIndex];
   const currentSizeOption = currentVariant?.sizes?.[selectedSizeIndex];
   const displayPrice = currentSizeOption?.price || 0;
   const stockCount = Number(currentSizeOption?.stock) || 0;
   const isOutOfStock = stockCount <= 0;
   const gallery = product?.main_images || [];
+
+  // --- HELPERS ---
+  const getDeliveryRange = () => {
+    const today = new Date();
+    const start = new Date(today);
+    const end = new Date(today);
+    start.setDate(today.getDate() + 3);
+    end.setDate(today.getDate() + 5);
+    const options = { month: 'short', day: 'numeric' };
+    return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
+  };
+
+  const openLightbox = (img) => {
+    const index = gallery.indexOf(img);
+    setLightboxIndex(index !== -1 ? index : 0);
+    setIsLightboxOpen(true);
+  };
+
+  const nextImage = (e) => {
+    e.stopPropagation();
+    setLightboxIndex((prev) => (prev + 1) % gallery.length);
+  };
+
+  const prevImage = (e) => {
+    e.stopPropagation();
+    setLightboxIndex((prev) => (prev - 1 + gallery.length) % gallery.length);
+  };
 
   const handleAddToCart = async () => {
     if (isOutOfStock) return;
@@ -148,11 +192,8 @@ export default function ProductDetails() {
     } catch (error) { alert("Error adding to cart"); }
   };
 
-  // --- FIX: SEND DATA DIRECTLY TO CHECKOUT ---
   const handleBuyNow = async () => {
     if (isOutOfStock) return;
-    
-    // Package the current selection into an object
     const purchaseData = {
       items: [{
         id: product.id,
@@ -163,11 +204,9 @@ export default function ProductDetails() {
         size: currentSizeOption.size,
         quantity: 1
       }],
-      isDirectPurchase: true, // Flag for checkout page to know it's not from cart
+      isDirectPurchase: true,
       total: displayPrice
     };
-
-    // Navigate to checkout and pass the data in the route state
     navigate('/checkout', { state: purchaseData });
   };
 
@@ -180,6 +219,17 @@ export default function ProductDetails() {
         <RopeAnimation />
       </header>
 
+      {/* FULL SCREEN LIGHTBOX */}
+      {isLightboxOpen && (
+        <div style={styles.lightboxOverlay} onClick={() => setIsLightboxOpen(false)}>
+          <button style={styles.closeBtn} onClick={() => setIsLightboxOpen(false)}>✕</button>
+          <button style={styles.navBtnLeft} onClick={prevImage}>←</button>
+          <img src={gallery[lightboxIndex]} alt="full screen" style={styles.lightboxImg} />
+          <button style={styles.navBtnRight} onClick={nextImage}>→</button>
+          <div style={styles.lightboxCounter}>{lightboxIndex + 1} / {gallery.length}</div>
+        </div>
+      )}
+
       {showToast && (
         <div style={styles.toast}>
           <div style={styles.toastContent}>
@@ -190,8 +240,8 @@ export default function ProductDetails() {
       )}
 
       <div style={styles.container}>
+        {/* PRODUCT SECTION */}
         <div className="glass-layout-container">
-          
           <div className="glass-thumb-sidebar">
             {gallery.map((img, i) => (
               <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={() => setMainImage(img)}>
@@ -201,8 +251,8 @@ export default function ProductDetails() {
           </div>
 
           <div className="glass-main-card">
-             <div className="glass-image-section">
-                <img src={mainImage} alt={product.name} className="glass-hero-img" />
+             <div className="glass-image-section" onClick={() => openLightbox(mainImage)}>
+                <img src={mainImage} alt={product.name} className="glass-hero-img" style={{cursor: 'zoom-in'}} />
              </div>
              
              <div className="glass-controls-section">
@@ -245,7 +295,6 @@ export default function ProductDetails() {
                    <button disabled={isOutOfStock} onClick={handleAddToCart} className="glass-cart-btn">
                      {isOutOfStock ? "SOLD OUT" : "ADD TO CART"}
                    </button>
-                   {/* UPDATED BUTTON CALL */}
                    <button disabled={isOutOfStock} onClick={handleBuyNow} className="glass-buy-btn">
                      BUY NOW
                    </button>
@@ -254,9 +303,70 @@ export default function ProductDetails() {
           </div>
         </div>
 
+        {/* TRUST BAR SECTION */}
+        <div style={styles.trustBar}>
+          <div style={styles.trustItem}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            <div style={styles.trustText}>
+              <strong>Delivery: {getDeliveryRange()}</strong>
+              <span>Charges: Rs. 300</span>
+            </div>
+          </div>
+
+          <div style={styles.trustItem}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <div style={styles.trustText}>
+              <strong>Easy Returns</strong>
+              <span>Within 3 days after delivery</span>
+            </div>
+          </div>
+
+          <div style={styles.trustItem}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            <div style={styles.trustText}>
+              <strong>Payment Methods</strong>
+              <div style={styles.paymentIcons}>
+                <img src="https://cdn-icons-png.flaticon.com/512/349/349221.png" alt="Visa" style={styles.cardLogo} />
+                <img src="https://cdn-icons-png.flaticon.com/512/349/349228.png" alt="Mastercard" style={styles.cardLogo} />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" style={styles.cardLogo} />
+                <span style={styles.codBadge}>COD</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ ...styles.trustItem, borderRight: 'none' }}>
+            <img src="https://bewdtedexomudpelsrxj.supabase.co/storage/v1/object/public/icons/sri-lanka-country-map-thick-outline-icon-vector-50459471.jpg" alt="Sri Lanka" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+            <div style={styles.trustText}>
+              <strong>Islandwide Delivery</strong>
+              <span>All over Sri Lanka</span>
+            </div>
+          </div>
+        </div>
+
+        {/* DESCRIPTION & REVIEWS SECTION */}
         <div className="bottom-content">
            <h2 style={styles.sectionTitle}>Product Details</h2>
            <p style={styles.description}>{product.description}</p>
+           
+           <hr style={{margin: '40px 0', opacity: 0.1}} />
+
+           <h2 style={styles.sectionTitle}>Customer Reviews ({reviews.length})</h2>
+           <div style={styles.reviewsList}>
+             {reviews.length > 0 ? (
+               reviews.map((rev) => (
+                 <div key={rev.id} style={styles.reviewCard}>
+                   <div style={styles.reviewHeader}>
+                     <span style={styles.reviewerName}>{rev.user_name || "Anonymous User"}</span>
+                     <span style={styles.reviewStars}>{"★".repeat(rev.rating)}{"☆".repeat(5-rev.rating)}</span>
+                   </div>
+                   <p style={styles.reviewComment}>{rev.comment}</p>
+                   <small style={{color: '#999'}}>{new Date(rev.created_at).toLocaleDateString()}</small>
+                 </div>
+               ))
+             ) : (
+               <p style={{color: '#888', fontStyle: 'italic'}}>No reviews yet for this product.</p>
+             )}
+           </div>
         </div>
       </div>
 
@@ -308,7 +418,42 @@ const styles = {
   heroHeader: { height: '350px', backgroundColor: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   container: { maxWidth: '1400px', margin: '0 auto' },
   sectionTitle: { fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '15px' },
-  description: { lineHeight: '1.6', color: '#666', fontSize: '14px' },
+  description: { lineHeight: '1.6', color: '#666', fontSize: '14px', marginBottom: '40px' },
   toast: { position: 'fixed', top: '20px', right: '20px', left: '20px', backgroundColor: '#000', color: '#fff', padding: '15px', borderRadius: '12px', zIndex: 1000 },
-  toastLink: { marginLeft: '10px', background: '#fff', border: 'none', padding: '5px 10px', borderRadius: '5px', fontWeight: '900' }
+  toastLink: { marginLeft: '10px', background: '#fff', border: 'none', padding: '5px 10px', borderRadius: '5px', fontWeight: '900' },
+  
+  // Lightbox
+  lightboxOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  lightboxImg: { maxWidth: '90%', maxHeight: '85%', objectFit: 'contain' },
+  closeBtn: { position: 'absolute', top: '20px', right: '30px', background: 'none', border: 'none', color: '#fff', fontSize: '30px', cursor: 'pointer' },
+  navBtnLeft: { position: 'absolute', left: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
+  navBtnRight: { position: 'absolute', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
+  lightboxCounter: { position: 'absolute', bottom: '20px', color: '#fff', fontWeight: '600' },
+
+  // Trust Bar
+  trustBar: { 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+    gap: '20px', 
+    padding: '30px', 
+    backgroundColor: '#fff', 
+    border: '1px solid #eee', 
+    borderRadius: '16px', 
+    margin: '40px 20px 50px 20px', 
+    position: 'relative', 
+    zIndex: 10 
+  },
+  trustItem: { display: 'flex', alignItems: 'center', gap: '14px', borderRight: '1px solid #f0f0f0', paddingRight: '10px' },
+  trustText: { display: 'flex', flexDirection: 'column', fontSize: '14px', color: '#333' },
+  paymentIcons: { display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' },
+  cardLogo: { height: '15px', width: 'auto' },
+  codBadge: { fontSize: '10px', border: '1.5px solid #333', padding: '1px 5px', borderRadius: '4px', fontWeight: '900' },
+
+  // Reviews
+  reviewsList: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  reviewCard: { padding: '20px', borderBottom: '1px solid #eee' },
+  reviewHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' },
+  reviewerName: { fontWeight: '700', fontSize: '15px' },
+  reviewStars: { color: '#ffcc00' },
+  reviewComment: { fontSize: '14px', color: '#444', marginBottom: '10px' }
 };
