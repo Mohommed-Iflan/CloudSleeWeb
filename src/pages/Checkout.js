@@ -15,7 +15,7 @@ export default function Checkout() {
   const [showAddressPopup, setShowAddressPopup] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newAddress, setNewAddress] = useState({
-    full_name: '', address_line: '', city: '', state_province: '', country: 'Sri Lanka', phone_number: ''
+    full_name: '', address_line: '', city: '', city: '', country: 'Sri Lanka', phone_number: ''
   });
 
   const navigate = useNavigate();

@@ -1,184 +1,201 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { Star, Trash2, Loader2, MessageSquare, ImagePlus } from 'lucide-react';
 
-export default function ReviewPage() {
-  const { orderId } = useParams();
+export default function ReviewPage({ user }) {
+  const { orderId, productId } = useParams();
   const navigate = useNavigate();
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
-  const [productId, setProductId] = useState(null);
-  const [dataLoaded, setDataLoaded] = useState(false); // New: Tracks if we found the product
-  
-  const [selectedFiles, setSelectedFiles] = useState([]); 
-  const [previews, setPreviews] = useState([]); 
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
 
+  // --- CLEANUP LOGIC ---
+  // This prevents memory leaks if the user leaves the page
   useEffect(() => {
-    const getProductFromOrder = async () => {
-      try {
-        // Look into the 'orders' table to see which product was bought (e.g. ID 5)
-        const { data, error } = await supabase
-          .from('orders')
-          .select('product_id')
-          .eq('id', orderId)
-          .single();
-
-        if (data && data.product_id) {
-          setProductId(data.product_id);
-          setDataLoaded(true);
-        } else {
-          console.error("No product found for this order ID:", orderId);
-          setDataLoaded(false);
-        }
-      } catch (err) {
-        console.error("Database connection error:", err);
-      }
+    return () => {
+      previews.forEach(url => URL.revokeObjectURL(url));
     };
-    getProductFromOrder();
-  }, [orderId]);
+  }, [previews]);
+
+  const uploadSingleFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('orderId', orderId); 
+
+    const { data, error } = await supabase.functions.invoke('upload-review-image', {
+      body: formData,
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
+    return data.url;
+  };
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (selectedFiles.length + files.length > 3) {
-      alert("You can only upload a maximum of 3 photos.");
+      alert("You can only upload up to 3 photos.");
       return;
     }
+    
     const newFiles = [...selectedFiles, ...files];
     setSelectedFiles(newFiles);
-    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-    setPreviews(newPreviews);
+    
+    // Create new previews
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviews(prev => [...prev, ...newPreviews]);
   };
 
   const removeImage = (index) => {
-    const updatedFiles = selectedFiles.filter((_, i) => i !== index);
-    const updatedPreviews = previews.filter((_, i) => i !== index);
-    setSelectedFiles(updatedFiles);
-    setPreviews(updatedPreviews);
+    URL.revokeObjectURL(previews[index]);
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
-    if (!comment.trim()) { alert("Please enter a comment!"); return; }
-    
-    // This stops the "Loading product data" bug
-    if (!productId) { 
-      alert("We are still fetching the product details. If this takes too long, please refresh the page."); 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!comment.trim()) { 
+      alert("Please share your thoughts in the comment section."); 
       return; 
     }
     
     setLoading(true);
-    let imageUrls = [];
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const imageUrls = [];
 
-      // 1. Upload Images
-      if (selectedFiles.length > 0) {
-        for (const file of selectedFiles) {
-          const fileName = `${user.id}/${Date.now()}_${file.name}`;
-          const { error: upError } = await supabase.storage
-            .from('review-images')
-            .upload(fileName, file);
-          if (upError) throw upError;
-          const { data: { publicUrl } } = supabase.storage
-            .from('review-images')
-            .getPublicUrl(fileName);
-          imageUrls.push(publicUrl);
-        }
+      // 1. Upload files
+      for (const file of selectedFiles) {
+        const url = await uploadSingleFile(file);
+        imageUrls.push(url);
       }
 
-      // 2. Insert Review
-      const { error } = await supabase.from('reviews').insert([{
+      // 2. Submit record
+      const { error: dbError } = await supabase.from('reviews').insert([{
         order_id: orderId,
-        user_id: user.id,
-        product_id: productId, // Ensuring ID 5 is sent
+        product_id: productId,
+        user_id: user?.id,
         rating: parseInt(rating),
         comment: comment,
-        images: imageUrls
+        images: imageUrls 
       }]);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
 
-      alert("Review Published Successfully! 📸");
+      // Revoke all URLs on success
+      previews.forEach(url => URL.revokeObjectURL(url));
+
+      alert("Thank you! Your review has been published.");
       navigate('/my-orders');
+
     } catch (err) {
-      alert("Error: " + err.message);
+      console.error("Submission error:", err);
+      alert(`Submission failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // --- UI RENDER ---
-
-  // If it's still loading and we haven't found the product ID yet
-  if (!dataLoaded && !productId) {
-    return (
-      <div style={{textAlign: 'center', padding: '100px'}}>
-        <h3>Loading product details...</h3>
-        <p style={{color: '#888'}}>If this takes more than 5 seconds, ensure your Order contains a Product ID.</p>
-      </div>
-    );
-  }
-
+  // ... (Return and styles remain exactly as you have them)
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>WRITE A REVIEW</h2>
+      <div style={styles.header}>
+        <MessageSquare size={28} color="#f57224" />
+        <h2 style={styles.title}>Product Review</h2>
+      </div>
+
       <div style={styles.card}>
-        <label style={styles.label}>RATING</label>
-        <select value={rating} onChange={(e) => setRating(e.target.value)} style={styles.input}>
-          <option value="5">5 Stars - Excellent</option>
-          <option value="4">4 Stars</option>
-          <option value="3">3 Stars</option>
-          <option value="2">2 Stars</option>
-          <option value="1">1 Star</option>
-        </select>
+        <form onSubmit={handleSubmit}>
+          <p style={styles.productId}>Product ID: {productId}</p>
 
-        <label style={styles.label}>YOUR COMMENT</label>
-        <textarea 
-          style={styles.textarea} 
-          value={comment} 
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="How is the quality and fit?"
-        />
-
-        <label style={styles.label}>ADD PHOTOS (MAX 3)</label>
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
-          onChange={handleImageChange} 
-          style={{marginBottom: '20px', fontSize: '12px'}}
-          disabled={selectedFiles.length >= 3}
-        />
-
-        <div style={styles.previewContainer}>
-          {previews.map((url, index) => (
-            <div key={index} style={styles.previewWrapper}>
-              <img src={url} alt="Preview" style={styles.previewImg} />
-              <button type="button" onClick={() => removeImage(index)} style={styles.removeBadge}>×</button>
+          <div style={styles.section}>
+            <label style={styles.label}>HOW WOULD YOU RATE IT?</label>
+            <div style={styles.ratingRow}>
+              {[1, 2, 3, 4, 5].map((num) => (
+                <Star 
+                  key={num}
+                  size={32}
+                  fill={num <= rating ? "#f57224" : "none"}
+                  color={num <= rating ? "#f57224" : "#ddd"}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setRating(num)}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
 
-        <button onClick={handleSubmit} disabled={loading} style={styles.btn}>
-          {loading ? "PUBLISHING..." : "SUBMIT REVIEW"}
-        </button>
+          <div style={styles.section}>
+            <label style={styles.label}>SHARE YOUR EXPERIENCE</label>
+            <textarea 
+              style={styles.textarea} 
+              value={comment} 
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="What did you like or dislike about the product?"
+              required
+            />
+          </div>
+
+          <div style={styles.section}>
+            <label style={styles.label}>ADD PHOTOS (MAX 3)</label>
+            <div 
+              style={styles.uploadZone} 
+              onClick={() => !loading && document.getElementById('review-images').click()}
+            >
+               <ImagePlus size={24} color={loading ? "#ccc" : "#1890ff"} />
+               <p style={{fontSize: '12px', color: '#666', marginTop: '8px'}}>Click to add photos</p>
+               <input 
+                id="review-images"
+                type="file" 
+                multiple 
+                accept="image/*" 
+                onChange={handleImageChange} 
+                hidden
+                disabled={loading}
+              />
+            </div>
+
+            <div style={styles.previewGrid}>
+              {previews.map((url, index) => (
+                <div key={index} style={styles.previewCard}>
+                  <img src={url} alt="preview" style={styles.previewImg} />
+                  <button type="button" onClick={() => removeImage(index)} style={styles.removeBtn}>
+                    <Trash2 size={12} color="white" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button type="submit" disabled={loading} style={styles.submitBtn}>
+            {loading ? (
+              <><Loader2 size={18} className="animate-spin" /> Publishing...</>
+            ) : "SUBMIT REVIEW"}
+          </button>
+        </form>
       </div>
     </div>
   );
 }
 
 const styles = {
-  container: { padding: '60px 20px', maxWidth: '500px', margin: 'auto', fontFamily: 'sans-serif' },
-  title: { fontSize: '22px', fontWeight: 'bold', textAlign: 'center', marginBottom: '30px' },
-  card: { border: '1px solid #eee', padding: '30px', borderRadius: '15px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', backgroundColor: '#fff' },
-  label: { fontSize: '11px', fontWeight: 'bold', display: 'block', marginBottom: '10px', color: '#888' },
-  input: { width: '100%', padding: '12px', marginBottom: '25px', border: '1px solid #ddd', borderRadius: '8px' },
-  textarea: { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', minHeight: '100px', marginBottom: '25px', boxSizing: 'border-box' },
-  previewContainer: { display: 'flex', gap: '15px', marginBottom: '30px', flexWrap: 'wrap' },
-  previewWrapper: { position: 'relative', width: '80px', height: '80px' },
-  previewImg: { width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #eee' },
-  removeBadge: { position: 'absolute', top: '-8px', right: '-8px', width: '20px', height: '20px', backgroundColor: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 'bold' },
-  btn: { width: '100%', padding: '16px', backgroundColor: '#000', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }
+  container: { padding: '40px 20px', maxWidth: '500px', margin: 'auto', fontFamily: 'system-ui, sans-serif' },
+  header: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '25px', justifyContent: 'center' },
+  title: { fontSize: '22px', fontWeight: 'bold', color: '#333' },
+  productId: { fontSize: '10px', color: '#999', textAlign: 'center', marginBottom: '20px', textTransform: 'uppercase' },
+  card: { backgroundColor: '#fff', padding: '30px', borderRadius: '16px', border: '1px solid #eee', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' },
+  section: { marginBottom: '25px' },
+  label: { fontSize: '11px', fontWeight: 'bold', color: '#888', marginBottom: '12px', display: 'block' },
+  ratingRow: { display: 'flex', gap: '8px', justifyContent: 'center' },
+  textarea: { width: '100%', padding: '15px', border: '1px solid #ddd', borderRadius: '12px', minHeight: '120px', boxSizing: 'border-box', fontSize: '14px', outline: 'none' },
+  uploadZone: { border: '2px dashed #e1e1e1', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer', backgroundColor: '#fafafa' },
+  previewGrid: { display: 'flex', gap: '12px', marginTop: '15px' },
+  previewCard: { position: 'relative', width: '70px', height: '70px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' },
+  previewImg: { width: '100%', height: '100%', objectFit: 'cover' },
+  removeBtn: { position: 'absolute', top: '4px', right: '4px', backgroundColor: '#ff4d4f', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  submitBtn: { width: '100%', padding: '16px', backgroundColor: '#f57224', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { Star, User, Calendar, CheckCircle, MessageSquare } from 'lucide-react';
 
 // --- PHYSICS ENGINE (White Wires) ---
 const RopeAnimation = () => {
@@ -49,7 +50,7 @@ const RopeAnimation = () => {
         let dx = this.p2.pos.x - this.p1.pos.x;
         let dy = this.p2.pos.y - this.p1.pos.y;
         let d = Math.sqrt(dx * dx + dy * dy);
-        let diff = (this.length - d) / d * 0.3;
+        let diff = (this.length - d) / (d || 1) * 0.3;
         let ox = dx * diff; let oy = dy * diff;
         if (!this.p1.pinned) { this.p1.pos.x -= ox; this.p1.pos.y -= oy; }
         if (!this.p2.pinned) { this.p2.pos.x += ox; this.p2.pos.y += oy; }
@@ -60,7 +61,7 @@ const RopeAnimation = () => {
       canvas.width = window.innerWidth;
       canvas.height = 350;
       ropes = [];
-      const totalRopes = canvas.width * 0.05;
+      const totalRopes = Math.max(20, canvas.width * 0.05);
       for (let i = 0; i < totalRopes; i++) {
         let x = Math.random() * canvas.width;
         let dots = []; let sticks = [];
@@ -109,7 +110,6 @@ export default function ProductDetails() {
   const { productId } = useParams();
   const navigate = useNavigate();
   
-  // --- STATE ---
   const [product, setProduct] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
@@ -118,62 +118,65 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   
-  // Lightbox State
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxGallery, setLightboxGallery] = useState([]);
 
-  // --- FETCH DATA ---
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      // Fetch Product
-      const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
-      if (prod) {
-        setProduct(prod);
-        setMainImage(prod.main_images?.[0] || "");
+      try {
+        const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
+        if (prod) {
+          setProduct(prod);
+          setMainImage(prod.main_images?.[0] || "");
+        }
+        
+        const { data: revs } = await supabase.from('reviews')
+          .select('*')
+          .eq('product_id', productId)
+          .order('created_at', { ascending: false });
+        if (revs) setReviews(revs);
+      } catch (err) {
+        console.error("Fetch error:", err);
       }
-      // Fetch Reviews (Assuming a 'reviews' table exists)
-      const { data: revs } = await supabase.from('reviews').select('*').eq('product_id', productId).order('created_at', { ascending: false });
-      if (revs) setReviews(revs);
-      
       setLoading(false);
     };
     fetchData();
   }, [productId]);
 
-  // --- DERIVED STATE ---
+  const getDeliveryRange = () => {
+    const today = new Date();
+    const start = new Date();
+    const end = new Date();
+    start.setDate(today.getDate() + 2);
+    end.setDate(today.getDate() + 5);
+    return `${start.getDate()} ${start.toLocaleString('default', { month: 'short' })} - ${end.getDate()} ${end.toLocaleString('default', { month: 'short' })}`;
+  };
+
   const currentVariant = product?.variant_data?.[selectedColorIndex];
   const currentSizeOption = currentVariant?.sizes?.[selectedSizeIndex];
-  const displayPrice = currentSizeOption?.price || 0;
+  const displayPrice = currentSizeOption?.price || product?.price || 0;
   const stockCount = Number(currentSizeOption?.stock) || 0;
   const isOutOfStock = stockCount <= 0;
   const gallery = product?.main_images || [];
 
-  // --- HELPERS ---
-  const getDeliveryRange = () => {
-    const today = new Date();
-    const start = new Date(today);
-    const end = new Date(today);
-    start.setDate(today.getDate() + 3);
-    end.setDate(today.getDate() + 5);
-    const options = { month: 'short', day: 'numeric' };
-    return `${start.toLocaleDateString('en-US', options)} - ${end.toLocaleDateString('en-US', options)}`;
-  };
-
-  const openLightbox = (img) => {
-    const index = gallery.indexOf(img);
+  const openLightbox = (img, customGallery = null) => {
+    const activeGallery = customGallery || gallery;
+    setLightboxGallery(activeGallery);
+    const index = activeGallery.indexOf(img);
     setLightboxIndex(index !== -1 ? index : 0);
     setIsLightboxOpen(true);
   };
 
   const nextImage = (e) => {
     e.stopPropagation();
-    setLightboxIndex((prev) => (prev + 1) % gallery.length);
+    setLightboxIndex((prev) => (prev + 1) % lightboxGallery.length);
   };
 
   const prevImage = (e) => {
     e.stopPropagation();
-    setLightboxIndex((prev) => (prev - 1 + gallery.length) % gallery.length);
+    setLightboxIndex((prev) => (prev - 1 + lightboxGallery.length) % lightboxGallery.length);
   };
 
   const handleAddToCart = async () => {
@@ -181,11 +184,25 @@ export default function ProductDetails() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert("Please login!"); navigate('/login'); return; }
     try {
-      const { data: existingItem } = await supabase.from('cart_items').select('id, quantity').eq('user_id', user.id).eq('product_id', product.id).eq('selected_color', currentVariant.name).eq('selected_size', currentSizeOption.size).single();
+      const { data: existingItem } = await supabase.from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.id)
+        .eq('product_id', product.id)
+        .eq('selected_color', currentVariant?.name)
+        .eq('selected_size', currentSizeOption?.size)
+        .single();
+
       if (existingItem) {
         await supabase.from('cart_items').update({ quantity: existingItem.quantity + 1 }).eq('id', existingItem.id);
       } else {
-        await supabase.from('cart_items').insert([{ user_id: user.id, product_id: product.id, quantity: 1, selected_color: currentVariant.name, selected_size: currentSizeOption.size, price_at_addition: displayPrice }]);
+        await supabase.from('cart_items').insert([{ 
+          user_id: user.id, 
+          product_id: product.id, 
+          quantity: 1, 
+          selected_color: currentVariant?.name, 
+          selected_size: currentSizeOption?.size, 
+          price_at_addition: displayPrice 
+        }]);
       }
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -200,8 +217,8 @@ export default function ProductDetails() {
         name: product.name,
         price: displayPrice,
         image: mainImage,
-        color: currentVariant.name,
-        size: currentSizeOption.size,
+        color: currentVariant?.name,
+        size: currentSizeOption?.size,
         quantity: 1
       }],
       isDirectPurchase: true,
@@ -223,10 +240,10 @@ export default function ProductDetails() {
       {isLightboxOpen && (
         <div style={styles.lightboxOverlay} onClick={() => setIsLightboxOpen(false)}>
           <button style={styles.closeBtn} onClick={() => setIsLightboxOpen(false)}>✕</button>
-          <button style={styles.navBtnLeft} onClick={prevImage}>←</button>
-          <img src={gallery[lightboxIndex]} alt="full screen" style={styles.lightboxImg} />
-          <button style={styles.navBtnRight} onClick={nextImage}>→</button>
-          <div style={styles.lightboxCounter}>{lightboxIndex + 1} / {gallery.length}</div>
+          {lightboxGallery.length > 1 && <button style={styles.navBtnLeft} onClick={prevImage}>←</button>}
+          <img src={lightboxGallery[lightboxIndex]} alt="full screen" style={styles.lightboxImg} />
+          {lightboxGallery.length > 1 && <button style={styles.navBtnRight} onClick={nextImage}>→</button>}
+          <div style={styles.lightboxCounter}>{lightboxIndex + 1} / {lightboxGallery.length}</div>
         </div>
       )}
 
@@ -240,7 +257,6 @@ export default function ProductDetails() {
       )}
 
       <div style={styles.container}>
-        {/* PRODUCT SECTION */}
         <div className="glass-layout-container">
           <div className="glass-thumb-sidebar">
             {gallery.map((img, i) => (
@@ -275,7 +291,7 @@ export default function ProductDetails() {
                         <div key={i} 
                              onClick={() => { setSelectedColorIndex(i); setSelectedSizeIndex(0); }}
                              className={`glass-swatch ${selectedColorIndex === i ? 'selected' : ''}`}
-                             style={{ backgroundImage: `url(${c.imageUrl})` }} />
+                             style={{ backgroundImage: `url(${c.imageUrl || mainImage})`, backgroundColor: '#eee' }} />
                       ))}
                    </div>
 
@@ -327,7 +343,7 @@ export default function ProductDetails() {
               <strong>Payment Methods</strong>
               <div style={styles.paymentIcons}>
                 <img src="https://cdn-icons-png.flaticon.com/512/349/349221.png" alt="Visa" style={styles.cardLogo} />
-                <img src="https://cdn-icons-png.flaticon.com/512/349/349228.png" alt="Mastercard" style={styles.cardLogo} />
+                <img src="https://cdn-icons-png.flaticon.com/512/349/349228.png" alt="American Express" style={styles.cardLogo} />
                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" style={styles.cardLogo} />
                 <span style={styles.codBadge}>COD</span>
               </div>
@@ -343,30 +359,79 @@ export default function ProductDetails() {
           </div>
         </div>
 
-        {/* DESCRIPTION & REVIEWS SECTION */}
+        {/* DESCRIPTION & REVIEWS */}
         <div className="bottom-content">
-           <h2 style={styles.sectionTitle}>Product Details</h2>
-           <p style={styles.description}>{product.description}</p>
-           
-           <hr style={{margin: '40px 0', opacity: 0.1}} />
+            <h2 style={styles.sectionTitle}>Product Details</h2>
+            <p style={styles.description}>{product.description}</p>
+            
+            <hr style={{margin: '40px 0', opacity: 0.1}} />
 
-           <h2 style={styles.sectionTitle}>Customer Reviews ({reviews.length})</h2>
-           <div style={styles.reviewsList}>
-             {reviews.length > 0 ? (
-               reviews.map((rev) => (
-                 <div key={rev.id} style={styles.reviewCard}>
-                   <div style={styles.reviewHeader}>
-                     <span style={styles.reviewerName}>{rev.user_name || "Anonymous User"}</span>
-                     <span style={styles.reviewStars}>{"★".repeat(rev.rating)}{"☆".repeat(5-rev.rating)}</span>
-                   </div>
-                   <p style={styles.reviewComment}>{rev.comment}</p>
-                   <small style={{color: '#999'}}>{new Date(rev.created_at).toLocaleDateString()}</small>
-                 </div>
-               ))
-             ) : (
-               <p style={{color: '#888', fontStyle: 'italic'}}>No reviews yet for this product.</p>
-             )}
-           </div>
+            <div style={styles.reviewSectionHeader}>
+               <h2 style={styles.sectionTitle}>Customer Reviews ({reviews.length})</h2>
+               <div style={styles.ratingSummary}>
+                  <span style={styles.bigRating}>
+                     {reviews.length > 0 
+                       ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
+                       : "0.0"}
+                  </span>
+                  <Star size={20} fill="#f57224" color="#f57224" />
+               </div>
+            </div>
+
+            <div style={styles.reviewsList}>
+              {reviews.length > 0 ? (
+                reviews.map((rev) => (
+                  <div key={rev.id} style={styles.reviewCard}>
+                     <div style={styles.reviewSidebar}>
+                        <div style={styles.avatar}><User size={20} color="#666" /></div>
+                     </div>
+                     
+                     <div style={styles.reviewContent}>
+                        <div style={styles.reviewMeta}>
+                           <span style={styles.reviewerName}>{rev.user_name || "Anonymous User"}</span>
+                           <span style={styles.verifiedBadge}><CheckCircle size={12} /> Verified Purchase</span>
+                        </div>
+
+                        <div style={styles.starRow}>
+                           {[...Array(5)].map((_, i) => (
+                             <Star 
+                               key={i} 
+                               size={16} 
+                               fill={i < rev.rating ? "#f57224" : "none"} 
+                               color={i < rev.rating ? "#f57224" : "#ddd"} 
+                             />
+                           ))}
+                           <span style={styles.reviewDate}>
+                             <Calendar size={12} style={{marginRight: '4px'}} />
+                             {new Date(rev.created_at).toLocaleDateString()}
+                           </span>
+                        </div>
+
+                        <p style={styles.reviewComment}>{rev.comment}</p>
+
+                        {rev.images && rev.images.length > 0 && (
+                          <div style={styles.reviewImageGrid}>
+                            {rev.images.map((imgUrl, idx) => (
+                              <img 
+                                key={idx} 
+                                src={imgUrl} 
+                                alt="review" 
+                                style={styles.reviewImg} 
+                                onClick={() => openLightbox(imgUrl, rev.images)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                     </div>
+                  </div>
+                ))
+              ) : (
+                <div style={styles.emptyReviews}>
+                  <MessageSquare size={40} color="#eee" />
+                  <p>No reviews yet. Be the first to review!</p>
+                </div>
+              )}
+            </div>
         </div>
       </div>
 
@@ -374,11 +439,11 @@ export default function ProductDetails() {
         .glass-layout-container { display: flex; gap: 30px; margin-top: -260px; position: relative; z-index: 10; font-family: 'Poppins', sans-serif; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
         .glass-thumb-sidebar { display: flex; flex-direction: column; gap: 15px; }
         .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; }
-        .glass-thumb-item img { width: 80%; }
+        .glass-thumb-item img { width: 100%; height: 100%; object-fit: cover; }
         .glass-thumb-item.active { border-color: #fff; background: rgba(255,255,255,0.4); }
-        .glass-main-card { flex: 1; max-width: 1500px; background: rgba(255,255,255,0.1); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 40px 60px rgba(0,0,0,0.15); border-radius: 40px; display: flex; overflow: hidden; }
+        .glass-main-card { flex: 1; min-width: 320px; max-width: 1500px; background: rgba(255,255,255,0.1); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 40px 60px rgba(0,0,0,0.15); border-radius: 40px; display: flex; overflow: hidden; }
         .glass-image-section { flex: 1.2; display: flex; align-items: center; justify-content: center; padding: 40px; background: rgba(255,255,255,0.05); }
-        .glass-hero-img { width: 100%; transition: 0.5s; }
+        .glass-hero-img { width: 100%; transition: 0.5s; object-fit: contain; }
         .glass-controls-section { flex: 1; padding: 40px; display: flex; flex-direction: column; justify-content: center; text-align: left; }
         .glass-title { font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 5px; }
         .glass-price { font-size: 20px; font-weight: 700; color: #ff4d4d; margin-bottom: 20px; }
@@ -389,24 +454,24 @@ export default function ProductDetails() {
         .stock-label { font-size: 13px; font-weight: 600; color: #333; }
         .glass-label { font-size: 10px; font-weight: 800; color: #555; margin-bottom: 8px; text-transform: uppercase; }
         .glass-swatch-row { display: flex; gap: 10px; margin-bottom: 20px; }
-        .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; }
+        .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; background-position: center; }
         .glass-swatch.selected { outline: 2px solid #000; outline-offset: 2px; }
         .glass-size-row { display: flex; gap: 8px; margin-bottom: 30px; }
-        .glass-size-btn { width: 38px; height: 38px; background: #fff; border: none; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; }
-        .glass-size-btn.active { background: #000; color: #fff; }
+        .glass-size-btn { width: 38px; height: 38px; background: #fff; border: 1px solid #ddd; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; }
+        .glass-size-btn.active { background: #000; color: #fff; border-color: #000; }
         .glass-action-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-        .glass-cart-btn, .glass-buy-btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .glass-cart-btn, .glass-buy-btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .glass-cart-btn { background: #000; color: #fff; border: none; }
         .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; }
         .bottom-content { margin-top: 60px; padding: 0 20px 0 100px; max-width: 900px; }
         @media (max-width: 768px) {
           .glass-layout-container { margin-top: -200px; flex-direction: column; align-items: center; padding: 0 20px; }
-          .glass-thumb-sidebar { flex-direction: row; order: 2; margin-bottom: 20px; }
+          .glass-thumb-sidebar { flex-direction: row; order: 2; margin-bottom: 20px; overflow-x: auto; max-width: 100%; padding: 5px; }
           .glass-main-card { flex-direction: column; border-radius: 25px; width: 100%; }
           .glass-title { color: #000000; }
           .glass-image-section { padding: 20px; }
           .glass-controls-section { padding: 25px; }
-          .bottom-content { padding: 0 20px; text-align: center; margin-top: 40px; }
+          .bottom-content { padding: 0 20px; text-align: left; margin-top: 40px; }
         }
       `}</style>
     </div>
@@ -420,9 +485,9 @@ const styles = {
   sectionTitle: { fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '15px' },
   description: { lineHeight: '1.6', color: '#666', fontSize: '14px', marginBottom: '40px' },
   toast: { position: 'fixed', top: '20px', right: '20px', left: '20px', backgroundColor: '#000', color: '#fff', padding: '15px', borderRadius: '12px', zIndex: 1000 },
-  toastLink: { marginLeft: '10px', background: '#fff', border: 'none', padding: '5px 10px', borderRadius: '5px', fontWeight: '900' },
+  toastContent: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  toastLink: { background: '#fff', border: 'none', padding: '5px 12px', borderRadius: '5px', fontWeight: '900', cursor: 'pointer' },
   
-  // Lightbox
   lightboxOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   lightboxImg: { maxWidth: '90%', maxHeight: '85%', objectFit: 'contain' },
   closeBtn: { position: 'absolute', top: '20px', right: '30px', background: 'none', border: 'none', color: '#fff', fontSize: '30px', cursor: 'pointer' },
@@ -430,30 +495,28 @@ const styles = {
   navBtnRight: { position: 'absolute', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
   lightboxCounter: { position: 'absolute', bottom: '20px', color: '#fff', fontWeight: '600' },
 
-  // Trust Bar
-  trustBar: { 
-    display: 'grid', 
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-    gap: '20px', 
-    padding: '30px', 
-    backgroundColor: '#fff', 
-    border: '1px solid #eee', 
-    borderRadius: '16px', 
-    margin: '40px 20px 50px 20px', 
-    position: 'relative', 
-    zIndex: 10 
-  },
+  trustBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', padding: '30px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px', margin: '40px 20px 50px 20px', position: 'relative', zIndex: 10 },
   trustItem: { display: 'flex', alignItems: 'center', gap: '14px', borderRight: '1px solid #f0f0f0', paddingRight: '10px' },
-  trustText: { display: 'flex', flexDirection: 'column', fontSize: '14px', color: '#333' },
-  paymentIcons: { display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' },
-  cardLogo: { height: '15px', width: 'auto' },
-  codBadge: { fontSize: '10px', border: '1.5px solid #333', padding: '1px 5px', borderRadius: '4px', fontWeight: '900' },
+  trustText: { display: 'flex', flexDirection: 'column', fontSize: '13px', color: '#333' },
+  paymentIcons: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' },
+  cardLogo: { height: '18px', objectFit: 'contain' },
+  codBadge: { fontSize: '9px', border: '1px solid #333', padding: '1px 4px', borderRadius: '3px', fontWeight: 'bold' },
 
-  // Reviews
-  reviewsList: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  reviewCard: { padding: '20px', borderBottom: '1px solid #eee' },
-  reviewHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '10px' },
-  reviewerName: { fontWeight: '700', fontSize: '15px' },
-  reviewStars: { color: '#ffcc00' },
-  reviewComment: { fontSize: '14px', color: '#444', marginBottom: '10px' }
+  reviewSectionHeader: { display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' },
+  ratingSummary: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#fff8f4', padding: '8px 15px', borderRadius: '20px', border: '1px solid #ffe7d6' },
+  bigRating: { fontSize: '20px', fontWeight: 'bold', color: '#f57224' },
+  reviewsList: { display: 'flex', flexDirection: 'column', gap: '15px' },
+  reviewCard: { display: 'flex', gap: '20px', padding: '25px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #f0f0f0' },
+  reviewSidebar: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  avatar: { width: '45px', height: '45px', borderRadius: '50%', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  reviewContent: { flex: 1 },
+  reviewMeta: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' },
+  reviewerName: { fontWeight: '700', fontSize: '15px', color: '#333' },
+  verifiedBadge: { fontSize: '11px', color: '#27ae60', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' },
+  starRow: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' },
+  reviewDate: { fontSize: '12px', color: '#999', display: 'flex', alignItems: 'center' },
+  reviewComment: { fontSize: '14px', color: '#555', lineHeight: '1.6', marginBottom: '15px' },
+  reviewImageGrid: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+  reviewImg: { width: '80px', height: '80px', borderRadius: '10px', objectFit: 'cover', cursor: 'pointer', border: '1px solid #eee' },
+  emptyReviews: { textAlign: 'center', padding: '50px', backgroundColor: '#fafafa', borderRadius: '20px', color: '#999' }
 };

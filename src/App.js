@@ -92,7 +92,7 @@ function App() {
             <Route path="/checkout" element={user ? <Checkout user={user} /> : <Navigate to="/login" />} />
             <Route path="/success" element={<Success />} />
             <Route path="/my-orders" element={user ? <MyOrders user={user} /> : <Navigate to="/login" />} />
-            <Route path="/review/:orderId" element={user ? <ReviewPage user={user} /> : <Navigate to="/login" />} />
+            <Route path="/review/:orderId/:productId" element={user ? <ReviewPage user={user} /> : <Navigate to="/login" />} />
             <Route path="/return/:orderId" element={user ? <ReturnPage user={user} /> : <Navigate to="/login" />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
