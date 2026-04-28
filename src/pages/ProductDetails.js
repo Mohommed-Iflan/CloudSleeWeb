@@ -267,10 +267,14 @@ export default function ProductDetails() {
           </div>
 
           <div className="glass-main-card">
-             <div className="glass-image-section" onClick={() => openLightbox(mainImage)}>
-                <img src={mainImage} alt={product.name} className="glass-hero-img" style={{cursor: 'zoom-in'}} />
+             {/* LEFT SIDE: Absolute positioning ensures it fills without pushing height */}
+             <div className="glass-image-section">
+                <div className="img-clip-container" onClick={() => openLightbox(mainImage)}>
+                   <img src={mainImage} alt={product.name} className="glass-hero-img" />
+                </div>
              </div>
              
+             {/* RIGHT SIDE: The Master height controller */}
              <div className="glass-controls-section">
                 <div className="glass-text-group">
                   <h3 className="glass-title">{product.name}</h3>
@@ -362,7 +366,11 @@ export default function ProductDetails() {
         {/* DESCRIPTION & REVIEWS */}
         <div className="bottom-content">
             <h2 style={styles.sectionTitle}>Product Details</h2>
-            <p style={styles.description}>{product.description}</p>
+            
+            <div 
+              style={styles.description} 
+              dangerouslySetInnerHTML={{ __html: product.description }} 
+            />
             
             <hr style={{margin: '40px 0', opacity: 0.1}} />
 
@@ -388,8 +396,8 @@ export default function ProductDetails() {
                      
                      <div style={styles.reviewContent}>
                         <div style={styles.reviewMeta}>
-                           <span style={styles.reviewerName}>{rev.user_name || "Anonymous User"}</span>
-                           <span style={styles.verifiedBadge}><CheckCircle size={12} /> Verified Purchase</span>
+                            <span style={styles.reviewerName}>{rev.user_name || "Anonymous User"}</span>
+                            <span style={styles.verifiedBadge}><CheckCircle size={12} /> Verified Purchase</span>
                         </div>
 
                         <div style={styles.starRow}>
@@ -441,37 +449,93 @@ export default function ProductDetails() {
         .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; }
         .glass-thumb-item img { width: 100%; height: 100%; object-fit: cover; }
         .glass-thumb-item.active { border-color: #fff; background: rgba(255,255,255,0.4); }
-        .glass-main-card { flex: 1; min-width: 320px; max-width: 1500px; background: rgba(255,255,255,0.1); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 40px 60px rgba(0,0,0,0.15); border-radius: 40px; display: flex; overflow: hidden; }
-        .glass-image-section { flex: 1.2; display: flex; align-items: center; justify-content: center; padding: 40px; background: rgba(255,255,255,0.05); }
-        .glass-hero-img { width: 100%; transition: 0.5s; object-fit: contain; }
-        .glass-controls-section { flex: 1; padding: 40px; display: flex; flex-direction: column; justify-content: center; text-align: left; }
-        .glass-title { font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 5px; }
-        .glass-price { font-size: 20px; font-weight: 700; color: #ff4d4d; margin-bottom: 20px; }
-        .stock-container { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        
+        .glass-main-card { 
+          flex: 1; 
+          min-width: 320px; 
+          max-width: 1500px; 
+          background: rgba(255,255,255,0.1); 
+          backdrop-filter: blur(25px); 
+          border: 1px solid rgba(255,255,255,0.3); 
+          box-shadow: 0 40px 60px rgba(0,0,0,0.15); 
+          border-radius: 40px; 
+          display: flex; 
+          overflow: hidden; 
+          position: relative;
+          min-height: 500px; /* Minimum card height */
+        }
+
+        /* Fixed the height issue here */
+        .glass-image-section { 
+          flex: 1; 
+          position: relative;
+          background: rgba(255,255,255,0.05); 
+        }
+
+        .img-clip-container {
+          position: absolute;
+          top: 30px;
+          left: 30px;
+          right: 30px;
+          bottom: 30px;
+          overflow: hidden;
+          border-radius: 20px; /* Rounded corners for image area */
+          cursor: zoom-in;
+        }
+
+        .glass-hero-img { 
+          width: 100%; 
+          height: 100%; 
+          object-fit: cover; 
+          transition: 0.5s; 
+          border-radius: 20px; /* Rounded image corners */
+        }
+
+        .glass-controls-section { 
+          flex: 1; 
+          padding: 60px 50px; 
+          display: flex; 
+          flex-direction: column; 
+          justify-content: center; 
+          text-align: left; 
+          z-index: 2;
+        }
+
+        .glass-title { font-size: 28px; font-weight: 800; color: #ffffff; margin-bottom: 5px; }
+        .glass-price { font-size: 24px; font-weight: 700; color: #ff4d4d; margin-bottom: 30px; }
+        .stock-container { display: flex; align-items: center; gap: 8px; margin-bottom: 25px; }
         .stock-dot { width: 10px; height: 10px; border-radius: 50%; }
         .stock-dot.in { background-color: #27ae60; }
         .stock-dot.out { background-color: #e74c3c; }
         .stock-label { font-size: 13px; font-weight: 600; color: #333; }
-        .glass-label { font-size: 10px; font-weight: 800; color: #555; margin-bottom: 8px; text-transform: uppercase; }
-        .glass-swatch-row { display: flex; gap: 10px; margin-bottom: 20px; }
-        .glass-swatch { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; background-position: center; }
+        .glass-label { font-size: 11px; font-weight: 800; color: #555; margin-bottom: 10px; text-transform: uppercase; }
+        .glass-swatch-row { display: flex; gap: 12px; margin-bottom: 25px; }
+        .glass-swatch { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; background-position: center; transition: 0.2s; }
+        .glass-swatch:hover { transform: scale(1.1); }
         .glass-swatch.selected { outline: 2px solid #000; outline-offset: 2px; }
-        .glass-size-row { display: flex; gap: 8px; margin-bottom: 30px; }
-        .glass-size-btn { width: 38px; height: 38px; background: #fff; border: 1px solid #ddd; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; }
+        .glass-size-row { display: flex; gap: 10px; margin-bottom: 40px; }
+        .glass-size-btn { width: 45px; height: 45px; background: #fff; border: 1px solid #ddd; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .glass-size-btn:hover:not(:disabled) { border-color: #000; }
         .glass-size-btn.active { background: #000; color: #fff; border-color: #000; }
-        .glass-action-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-        .glass-cart-btn, .glass-buy-btn { width: 100%; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .glass-action-stack { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; }
+        .glass-cart-btn, .glass-buy-btn { width: 100%; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s; font-size: 14px; letter-spacing: 1px; }
         .glass-cart-btn { background: #000; color: #fff; border: none; }
+        .glass-cart-btn:hover { background: #333; transform: translateY(-2px); }
         .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; }
+        .glass-buy-btn:hover { background: #000; color: #fff; }
+        
         .bottom-content { margin-top: 60px; padding: 0 20px 0 100px; max-width: 900px; }
-        @media (max-width: 768px) {
-          .glass-layout-container { margin-top: -200px; flex-direction: column; align-items: center; padding: 0 20px; }
-          .glass-thumb-sidebar { flex-direction: row; order: 2; margin-bottom: 20px; overflow-x: auto; max-width: 100%; padding: 5px; }
-          .glass-main-card { flex-direction: column; border-radius: 25px; width: 100%; }
-          .glass-title { color: #000000; }
-          .glass-image-section { padding: 20px; }
-          .glass-controls-section { padding: 25px; }
-          .bottom-content { padding: 0 20px; text-align: left; margin-top: 40px; }
+        .bottom-content ul, .bottom-content ol { padding-left: 20px; margin-bottom: 15px; }
+
+        @media (max-width: 992px) {
+           .glass-main-card { flex-direction: column; height: auto; min-height: 0; }
+           .glass-image-section { height: 450px; flex: none; }
+           .img-clip-container { position: relative; top: 0; left: 0; right: 0; bottom: 0; height: 100%; border-radius: 0; }
+           .glass-controls-section { padding: 40px 30px; text-align: center; align-items: center; }
+           .glass-swatch-row, .glass-size-row { justify-content: center; }
+           .glass-action-stack { margin: 0 auto; }
+           .bottom-content { padding: 0 20px; margin-top: 40px; }
+           .glass-title { color: #000; }
         }
       `}</style>
     </div>
@@ -483,25 +547,22 @@ const styles = {
   heroHeader: { height: '350px', backgroundColor: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   container: { maxWidth: '1400px', margin: '0 auto' },
   sectionTitle: { fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '15px' },
-  description: { lineHeight: '1.6', color: '#666', fontSize: '14px', marginBottom: '40px' },
+  description: { lineHeight: '1.8', color: '#444', fontSize: '15px', marginBottom: '40px', textAlign: 'left' },
   toast: { position: 'fixed', top: '20px', right: '20px', left: '20px', backgroundColor: '#000', color: '#fff', padding: '15px', borderRadius: '12px', zIndex: 1000 },
   toastContent: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   toastLink: { background: '#fff', border: 'none', padding: '5px 12px', borderRadius: '5px', fontWeight: '900', cursor: 'pointer' },
-  
   lightboxOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   lightboxImg: { maxWidth: '90%', maxHeight: '85%', objectFit: 'contain' },
   closeBtn: { position: 'absolute', top: '20px', right: '30px', background: 'none', border: 'none', color: '#fff', fontSize: '30px', cursor: 'pointer' },
   navBtnLeft: { position: 'absolute', left: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
   navBtnRight: { position: 'absolute', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
   lightboxCounter: { position: 'absolute', bottom: '20px', color: '#fff', fontWeight: '600' },
-
   trustBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', padding: '30px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px', margin: '40px 20px 50px 20px', position: 'relative', zIndex: 10 },
   trustItem: { display: 'flex', alignItems: 'center', gap: '14px', borderRight: '1px solid #f0f0f0', paddingRight: '10px' },
   trustText: { display: 'flex', flexDirection: 'column', fontSize: '13px', color: '#333' },
   paymentIcons: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' },
   cardLogo: { height: '18px', objectFit: 'contain' },
   codBadge: { fontSize: '9px', border: '1px solid #333', padding: '1px 4px', borderRadius: '3px', fontWeight: 'bold' },
-
   reviewSectionHeader: { display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' },
   ratingSummary: { display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#fff8f4', padding: '8px 15px', borderRadius: '20px', border: '1px solid #ffe7d6' },
   bigRating: { fontSize: '20px', fontWeight: 'bold', color: '#f57224' },
