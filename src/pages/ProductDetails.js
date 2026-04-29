@@ -444,6 +444,7 @@ export default function ProductDetails() {
       </div>
 
       <style>{`
+        /* --- DESKTOP STYLES (UNCHANGED) --- */
         .glass-layout-container { display: flex; gap: 30px; margin-top: -260px; position: relative; z-index: 10; font-family: 'Poppins', sans-serif; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
         .glass-thumb-sidebar { display: flex; flex-direction: column; gap: 15px; }
         .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; }
@@ -462,34 +463,24 @@ export default function ProductDetails() {
           display: flex; 
           overflow: hidden; 
           position: relative;
-          min-height: 500px; /* Minimum card height */
+          min-height: 500px;
         }
 
-        /* Fixed the height issue here */
         .glass-image-section { 
-          flex: 1; 
+          flex: 1.2; 
           position: relative;
           background: rgba(255,255,255,0.05); 
         }
 
         .img-clip-container {
           position: absolute;
-          top: 30px;
-          left: 30px;
-          right: 30px;
-          bottom: 30px;
+          top: 30px; left: 30px; right: 30px; bottom: 30px;
           overflow: hidden;
-          border-radius: 20px; /* Rounded corners for image area */
+          border-radius: 20px;
           cursor: zoom-in;
         }
 
-        .glass-hero-img { 
-          width: 100%; 
-          height: 100%; 
-          object-fit: cover; 
-          transition: 0.5s; 
-          border-radius: 20px; /* Rounded image corners */
-        }
+        .glass-hero-img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; border-radius: 20px; }
 
         .glass-controls-section { 
           flex: 1; 
@@ -497,7 +488,6 @@ export default function ProductDetails() {
           display: flex; 
           flex-direction: column; 
           justify-content: center; 
-          text-align: left; 
           z-index: 2;
         }
 
@@ -511,31 +501,71 @@ export default function ProductDetails() {
         .glass-label { font-size: 11px; font-weight: 800; color: #555; margin-bottom: 10px; text-transform: uppercase; }
         .glass-swatch-row { display: flex; gap: 12px; margin-bottom: 25px; }
         .glass-swatch { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; background-size: cover; background-position: center; transition: 0.2s; }
-        .glass-swatch:hover { transform: scale(1.1); }
         .glass-swatch.selected { outline: 2px solid #000; outline-offset: 2px; }
         .glass-size-row { display: flex; gap: 10px; margin-bottom: 40px; }
         .glass-size-btn { width: 45px; height: 45px; background: #fff; border: 1px solid #ddd; border-radius: 10px; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; }
-        .glass-size-btn:hover:not(:disabled) { border-color: #000; }
         .glass-size-btn.active { background: #000; color: #fff; border-color: #000; }
         .glass-action-stack { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; }
-        .glass-cart-btn, .glass-buy-btn { width: 100%; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.3s; font-size: 14px; letter-spacing: 1px; }
-        .glass-cart-btn { background: #000; color: #fff; border: none; }
-        .glass-cart-btn:hover { background: #333; transform: translateY(-2px); }
-        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; }
-        .glass-buy-btn:hover { background: #000; color: #fff; }
-        
-        .bottom-content { margin-top: 60px; padding: 0 20px 0 100px; max-width: 900px; }
-        .bottom-content ul, .bottom-content ol { padding-left: 20px; margin-bottom: 15px; }
+        .glass-cart-btn { background: #000; color: #fff; border: none; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; }
+        .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; }
 
+        /* --- MOBILE OPTIMIZATION (THE FIX) --- */
         @media (max-width: 992px) {
-           .glass-main-card { flex-direction: column; height: auto; min-height: 0; }
-           .glass-image-section { height: 450px; flex: none; }
-           .img-clip-container { position: relative; top: 0; left: 0; right: 0; bottom: 0; height: 100%; border-radius: 0; }
-           .glass-controls-section { padding: 40px 30px; text-align: center; align-items: center; }
-           .glass-swatch-row, .glass-size-row { justify-content: center; }
-           .glass-action-stack { margin: 0 auto; }
-           .bottom-content { padding: 0 20px; margin-top: 40px; }
-           .glass-title { color: #000; }
+           .glass-layout-container { 
+             margin-top: -300px; 
+             width: 100%
+             padding: 0 15px; 
+             flex-direction: column; 
+           }
+
+           .glass-main-card { 
+             flex-direction: column; 
+             min-height: auto; 
+             border-radius: 25px; 
+           }
+
+           .glass-image-section { 
+             height: 360px; /* Forces height so absolute child shows up */
+             width: 360px;
+             flex: none;
+           }
+
+           .img-clip-container { 
+             top: 10px; left: 10px; right: 10px; bottom: 0; 
+             border-radius: 1; 
+           }
+
+           .glass-hero-img { 
+             border-radius: 0; 
+             width: 100%;
+             height: 100%;
+           }
+
+           .glass-thumb-sidebar { 
+             flex-direction: row; 
+             order: 2; /* Shows thumbnails after the main image card */
+             overflow-x: auto; 
+             padding: 10px 0; 
+             width: 100%;
+           }
+
+           .glass-thumb-item {
+             width: 60px; height: 60px; flex-shrink: 0;
+           }
+
+           .glass-controls-section { 
+             padding: 30px 20px; 
+             background: #fff; /* Easier to read controls on white */
+             border-radius: 0 0 25px 25px;
+           }
+
+           .glass-title { color: #000; font-size: 22px; }
+           .glass-price { font-size: 20px; margin-bottom: 20px; }
+           
+           .bottom-content { 
+             padding: 0 15px; 
+             margin-top: 30px; 
+           }
         }
       `}</style>
     </div>

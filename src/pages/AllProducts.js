@@ -1,41 +1,80 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { ShoppingBag, ArrowLeft } from 'lucide-react'; 
+import { ShoppingBag, ArrowLeft, ListFilter } from 'lucide-react'; 
 
 export default function AllProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortOption, setSortOption] = useState('newest'); // State for filter
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchAllProducts = async () => {
       setLoading(true);
-      // Logic: Fetch all products, ordered by newest first
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
+      
+      let query = supabase.from('products').select('*');
 
-      if (!error) setProducts(data);
+      // Sort by Created At (Newest/Oldest)
+      if (sortOption === 'oldest') {
+        query = query.order('created_at', { ascending: true });
+      } else if (sortOption === 'newest') {
+        query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query;
+
+      if (!error) {
+        let sortedData = data;
+
+        // Manual sort for Price (since price is nested in JSON)
+        if (sortOption === 'price_low') {
+          sortedData = [...data].sort((a, b) => 
+            (a.variant_data?.[0]?.sizes?.[0]?.price || 0) - (b.variant_data?.[0]?.sizes?.[0]?.price || 0)
+          );
+        } else if (sortOption === 'price_high') {
+          sortedData = [...data].sort((a, b) => 
+            (b.variant_data?.[0]?.sizes?.[0]?.price || 0) - (a.variant_data?.[0]?.sizes?.[0]?.price || 0)
+          );
+        }
+
+        setProducts(sortedData);
+      }
       setLoading(false);
     };
 
     fetchAllProducts();
-  }, []);
-
-  if (loading) return <div style={styles.loader}>Loading our collection...</div>;
+  }, [sortOption]); // Re-fetch when sortOption changes
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => navigate(-1)} style={styles.backBtn}>
-          <ArrowLeft size={18} /> BACK
-        </button>
-        <h2 style={styles.title}>SHOP ALL PRODUCTS</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <button onClick={() => navigate(-1)} style={styles.backBtn}>
+            <ArrowLeft size={18} /> BACK
+          </button>
+          <h2 style={styles.title}>SHOP ALL PRODUCTS</h2>
+        </div>
+
+        {/* --- FILTER DROP-DOWN --- */}
+        <div style={styles.filterWrapper}>
+          <ListFilter size={16} color="#666" />
+          <select 
+            style={styles.select} 
+            value={sortOption} 
+            onChange={(e) => setSortOption(e.target.value)}
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="price_low">Price: Low to High</option>
+            <option value="price_high">Price: High to Low</option>
+          </select>
+        </div>
       </div>
 
-      {products.length > 0 ? (
+      {loading ? (
+        <div style={styles.loader}>Loading our collection...</div>
+      ) : products.length > 0 ? (
         <div style={styles.grid}>
           {products.map((item) => {
             const displayImg = item.main_images?.[0] || 'https://via.placeholder.com/300';
@@ -64,12 +103,16 @@ export default function AllProducts() {
   );
 }
 
-// Styles remain identical to your SearchResults for consistency
 const styles = {
   container: { padding: '40px 8%', maxWidth: '1400px', margin: 'auto', fontFamily: 'Inter, sans-serif' },
-  header: { display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' },
   backBtn: { display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', fontWeight: '700', cursor: 'pointer', fontSize: '12px' },
   title: { fontSize: '18px', fontWeight: '900', letterSpacing: '1px' },
+  
+  // Filter Styles
+  filterWrapper: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f5f5f5', padding: '5px 15px', borderRadius: '25px' },
+  select: { border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', color: '#333' },
+
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '30px' },
   card: { cursor: 'pointer', transition: 'transform 0.2s' },
   imgWrapper: { overflow: 'hidden', borderRadius: '8px', backgroundColor: '#f9f9f9', aspectRatio: '1/1' },

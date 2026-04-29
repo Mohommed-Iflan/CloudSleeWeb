@@ -1,50 +1,89 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { ShoppingBag, ArrowLeft } from 'lucide-react'; 
+import { ShoppingBag, ArrowLeft, ListFilter } from 'lucide-react'; 
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q"); 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortOption, setSortOption] = useState('newest'); // Filter state
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchResults = async () => {
       setLoading(true);
-      // Logic: Find products where query is in name OR description OR tags
-      const { data, error } = await supabase
+      
+      // Basic Search Query
+      let dbQuery = supabase
         .from('products')
         .select('*')
         .or(`name.ilike.%${query}%,description.ilike.%${query}%,tags.ilike.%${query}%`);
 
-      if (!error) setProducts(data);
+      // Apply DB-level sorting for dates
+      if (sortOption === 'oldest') {
+        dbQuery = dbQuery.order('created_at', { ascending: true });
+      } else if (sortOption === 'newest') {
+        dbQuery = dbQuery.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await dbQuery;
+
+      if (!error) {
+        let finalData = data;
+
+        // Apply Frontend sorting for Price (Nested JSON logic)
+        if (sortOption === 'price_low') {
+          finalData = [...data].sort((a, b) => 
+            (a.variant_data?.[0]?.sizes?.[0]?.price || 0) - (b.variant_data?.[0]?.sizes?.[0]?.price || 0)
+          );
+        } else if (sortOption === 'price_high') {
+          finalData = [...data].sort((a, b) => 
+            (b.variant_data?.[0]?.sizes?.[0]?.price || 0) - (a.variant_data?.[0]?.sizes?.[0]?.price || 0)
+          );
+        }
+
+        setProducts(finalData);
+      }
       setLoading(false);
     };
 
     if (query) fetchResults();
-  }, [query]);
+  }, [query, sortOption]); // Re-run if query OR sort changes
 
   if (loading) return <div style={styles.loader}>Searching our collection...</div>;
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => navigate(-1)} style={styles.backBtn}>
-          <ArrowLeft size={18} /> BACK
-        </button>
-        <h2 style={styles.title}>RESULTS FOR "{query?.toUpperCase()}"</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <button onClick={() => navigate(-1)} style={styles.backBtn}>
+            <ArrowLeft size={18} /> BACK
+          </button>
+          <h2 style={styles.title}>RESULTS FOR "{query?.toUpperCase()}"</h2>
+        </div>
+
+        {/* --- FILTER DROP-DOWN --- */}
+        <div style={styles.filterWrapper}>
+          <ListFilter size={16} color="#666" />
+          <select 
+            style={styles.select} 
+            value={sortOption} 
+            onChange={(e) => setSortOption(e.target.value)}
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="price_low">Price: Low to High</option>
+            <option value="price_high">Price: High to Low</option>
+          </select>
+        </div>
       </div>
 
       {products.length > 0 ? (
         <div style={styles.grid}>
           {products.map((item) => {
-            // SAFE DATA EXTRACTION
-            // 1. Get first image from main_images array
             const displayImg = item.main_images?.[0] || 'https://via.placeholder.com/300';
-            
-            // 2. Get first price from the first color and first size
             const displayPrice = item.variant_data?.[0]?.sizes?.[0]?.price;
 
             return (
@@ -53,8 +92,6 @@ export default function SearchResults() {
                   <img src={displayImg} alt={item.name} style={styles.img} />
                 </div>
                 <h3 style={styles.productName}>{item.name}</h3>
-                
-                {/* 3. Safety check for .toLocaleString() */}
                 <p style={styles.price}>
                   Rs. {displayPrice ? Number(displayPrice).toLocaleString() : "0.00"}
                 </p>
@@ -74,9 +111,14 @@ export default function SearchResults() {
 
 const styles = {
   container: { padding: '40px 8%', maxWidth: '1400px', margin: 'auto', fontFamily: 'Inter, sans-serif' },
-  header: { display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' },
   backBtn: { display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', fontWeight: '700', cursor: 'pointer', fontSize: '12px' },
   title: { fontSize: '18px', fontWeight: '900', letterSpacing: '1px' },
+  
+  // Filter Styles matching AllProducts
+  filterWrapper: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f5f5f5', padding: '5px 15px', borderRadius: '25px' },
+  select: { border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', color: '#333' },
+
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '30px' },
   card: { cursor: 'pointer', transition: 'transform 0.2s' },
   imgWrapper: { overflow: 'hidden', borderRadius: '8px', backgroundColor: '#f9f9f9', aspectRatio: '1/1' },
