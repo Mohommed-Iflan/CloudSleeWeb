@@ -267,13 +267,15 @@ export default function ProductDetails() {
           </div>
 
           <div className="glass-main-card">
-              <div className="glass-image-section">
+             {/* LEFT SIDE: Absolute positioning ensures it fills without pushing height */}
+             <div className="glass-image-section">
                 <div className="img-clip-container" onClick={() => openLightbox(mainImage)}>
                    <img src={mainImage} alt={product.name} className="glass-hero-img" />
                 </div>
-              </div>
-              
-              <div className="glass-controls-section">
+             </div>
+             
+             {/* RIGHT SIDE: The Master height controller */}
+             <div className="glass-controls-section">
                 <div className="glass-text-group">
                   <h3 className="glass-title">{product.name}</h3>
                   <p className="glass-price">Rs. {Number(displayPrice).toLocaleString()}</p>
@@ -317,7 +319,7 @@ export default function ProductDetails() {
                      BUY NOW
                    </button>
                 </div>
-              </div>
+             </div>
           </div>
         </div>
 
@@ -399,18 +401,18 @@ export default function ProductDetails() {
                         </div>
 
                         <div style={styles.starRow}>
-                            {[...Array(5)].map((_, i) => (
+                           {[...Array(5)].map((_, i) => (
                              <Star 
                                key={i} 
                                size={16} 
                                fill={i < rev.rating ? "#f57224" : "none"} 
                                color={i < rev.rating ? "#f57224" : "#ddd"} 
                              />
-                            ))}
-                            <span style={styles.reviewDate}>
-                               <Calendar size={12} style={{marginRight: '4px'}} />
-                               {new Date(rev.created_at).toLocaleDateString()}
-                            </span>
+                           ))}
+                           <span style={styles.reviewDate}>
+                             <Calendar size={12} style={{marginRight: '4px'}} />
+                             {new Date(rev.created_at).toLocaleDateString()}
+                           </span>
                         </div>
 
                         <p style={styles.reviewComment}>{rev.comment}</p>
@@ -442,8 +444,7 @@ export default function ProductDetails() {
       </div>
 
       <style>{`
-        * { box-sizing: border-box; } /* CRITICAL for mobile width */
-        
+        /* --- DESKTOP STYLES (UNCHANGED) --- */
         .glass-layout-container { display: flex; gap: 30px; margin-top: -260px; position: relative; z-index: 10; font-family: 'Poppins', sans-serif; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
         .glass-thumb-sidebar { display: flex; flex-direction: column; gap: 15px; }
         .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; }
@@ -508,58 +509,53 @@ export default function ProductDetails() {
         .glass-cart-btn { background: #000; color: #fff; border: none; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; }
         .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; }
 
+        /* --- MOBILE OPTIMIZATION (THE FIX) --- */
         @media (max-width: 992px) {
            .glass-layout-container { 
-             margin-top: -300px; /* Reduced negative margin */
-             width: 100%;
-             padding: 0 10px; 
+             margin-top: -300px; 
+             width: 100%
+             padding: 0 15px; 
              flex-direction: column; 
-             align-items: center;
            }
 
            .glass-main-card { 
              flex-direction: column; 
-             width: 100%;
-             min-width: 0;
              min-height: auto; 
              border-radius: 25px; 
            }
 
            .glass-image-section { 
-             height: 360px;
-             width: 100%; /* Corrected from fixed 360px */
+             height: 360px; /* Forces height so absolute child shows up */
+             width: 360px;
              flex: none;
            }
 
            .img-clip-container { 
-             top: 0; left: 0; right: 0; bottom: 0; 
-             border-radius: 0; 
+             top: 10px; left: 10px; right: 10px; bottom: 0; 
+             border-radius: 1; 
            }
 
            .glass-hero-img { 
              border-radius: 0; 
              width: 100%;
              height: 100%;
-             object-fit: cover;
            }
 
            .glass-thumb-sidebar { 
              flex-direction: row; 
-             order: 2; 
+             order: 2; /* Shows thumbnails after the main image card */
              overflow-x: auto; 
-             padding: 15px 0; 
+             padding: 10px 0; 
              width: 100%;
-             justify-content: flex-start;
            }
 
            .glass-thumb-item {
-             width: 65px; height: 65px; flex-shrink: 0;
+             width: 60px; height: 60px; flex-shrink: 0;
            }
 
            .glass-controls-section { 
              padding: 30px 20px; 
-             background: #fff; 
-             width: 100%;
+             background: #fff; /* Easier to read controls on white */
              border-radius: 0 0 25px 25px;
            }
 
@@ -569,7 +565,6 @@ export default function ProductDetails() {
            .bottom-content { 
              padding: 0 15px; 
              margin-top: 30px; 
-             width: 100%;
            }
         }
       `}</style>
@@ -578,9 +573,9 @@ export default function ProductDetails() {
 }
 
 const styles = {
-  pageWrapper: { backgroundColor: '#fff', minHeight: '100vh', paddingBottom: '100px', overflowX: 'hidden' },
+  pageWrapper: { backgroundColor: '#fff', minHeight: '100vh', paddingBottom: '100px' },
   heroHeader: { height: '350px', backgroundColor: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  container: { maxWidth: '1400px', margin: '0 auto', padding: '0 10px' },
+  container: { maxWidth: '1400px', margin: '0 auto' },
   sectionTitle: { fontSize: '18px', fontWeight: '900', textTransform: 'uppercase', marginBottom: '15px' },
   description: { lineHeight: '1.8', color: '#444', fontSize: '15px', marginBottom: '40px', textAlign: 'left' },
   toast: { position: 'fixed', top: '20px', right: '20px', left: '20px', backgroundColor: '#000', color: '#fff', padding: '15px', borderRadius: '12px', zIndex: 1000 },
@@ -592,7 +587,7 @@ const styles = {
   navBtnLeft: { position: 'absolute', left: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
   navBtnRight: { position: 'absolute', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '40px', padding: '10px 20px', borderRadius: '50%', cursor: 'pointer' },
   lightboxCounter: { position: 'absolute', bottom: '20px', color: '#fff', fontWeight: '600' },
-  trustBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', padding: '30px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px', margin: '40px 0', position: 'relative', zIndex: 10 },
+  trustBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', padding: '30px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px', margin: '40px 20px 50px 20px', position: 'relative', zIndex: 10 },
   trustItem: { display: 'flex', alignItems: 'center', gap: '14px', borderRight: '1px solid #f0f0f0', paddingRight: '10px' },
   trustText: { display: 'flex', flexDirection: 'column', fontSize: '13px', color: '#333' },
   paymentIcons: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' },
