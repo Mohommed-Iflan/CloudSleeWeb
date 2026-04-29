@@ -510,7 +510,7 @@ export default function ProductDetails() {
 
         @media (max-width: 992px) {
            .glass-layout-container { 
-             margin-top: -150px; /* Reduced negative margin */
+             margin-top: -300px; /* Reduced negative margin */
              width: 100%;
              padding: 0 10px; 
              flex-direction: column; 
