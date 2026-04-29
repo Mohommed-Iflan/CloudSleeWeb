@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { ShoppingBag, ArrowLeft, ListFilter } from 'lucide-react'; 
+import { ShoppingBag, ArrowLeft, ListFilter, Users } from 'lucide-react'; 
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q"); 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sortOption, setSortOption] = useState('newest'); // Filter state
+  const [sortOption, setSortOption] = useState('newest'); 
+  const [genderFilter, setGenderFilter] = useState('all'); // Added Gender State
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +21,11 @@ export default function SearchResults() {
         .from('products')
         .select('*')
         .or(`name.ilike.%${query}%,description.ilike.%${query}%,tags.ilike.%${query}%`);
+
+      // --- APPLY GENDER FILTER ---
+      if (genderFilter !== 'all') {
+        dbQuery = dbQuery.eq('gender', genderFilter);
+      }
 
       // Apply DB-level sorting for dates
       if (sortOption === 'oldest') {
@@ -50,9 +56,7 @@ export default function SearchResults() {
     };
 
     if (query) fetchResults();
-  }, [query, sortOption]); // Re-run if query OR sort changes
-
-  if (loading) return <div style={styles.loader}>Searching our collection...</div>;
+  }, [query, sortOption, genderFilter]); // Added genderFilter to dependency array
 
   return (
     <div style={styles.container}>
@@ -64,23 +68,43 @@ export default function SearchResults() {
           <h2 style={styles.title}>RESULTS FOR "{query?.toUpperCase()}"</h2>
         </div>
 
-        {/* --- FILTER DROP-DOWN --- */}
-        <div style={styles.filterWrapper}>
-          <ListFilter size={16} color="#666" />
-          <select 
-            style={styles.select} 
-            value={sortOption} 
-            onChange={(e) => setSortOption(e.target.value)}
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="price_low">Price: Low to High</option>
-            <option value="price_high">Price: High to Low</option>
-          </select>
+        <div style={styles.controlsGroup}>
+          {/* --- GENDER FILTER --- */}
+          <div style={styles.filterWrapper}>
+            <Users size={16} color="#666" />
+            <select 
+              style={styles.select} 
+              value={genderFilter} 
+              onChange={(e) => setGenderFilter(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              <option value="Men">Men</option>
+              <option value="Women">Women</option>
+              <option value="Kids">Kids</option>
+              <option value="Unisex">Unisex</option>
+            </select>
+          </div>
+
+          {/* --- SORT DROP-DOWN --- */}
+          <div style={styles.filterWrapper}>
+            <ListFilter size={16} color="#666" />
+            <select 
+              style={styles.select} 
+              value={sortOption} 
+              onChange={(e) => setSortOption(e.target.value)}
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="price_low">Price: Low to High</option>
+              <option value="price_high">Price: High to Low</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {products.length > 0 ? (
+      {loading ? (
+        <div style={styles.loader}>Searching our collection...</div>
+      ) : products.length > 0 ? (
         <div style={styles.grid}>
           {products.map((item) => {
             const displayImg = item.main_images?.[0] || 'https://via.placeholder.com/300';
@@ -92,6 +116,7 @@ export default function SearchResults() {
                   <img src={displayImg} alt={item.name} style={styles.img} />
                 </div>
                 <h3 style={styles.productName}>{item.name}</h3>
+                <p style={styles.genderLabel}>{item.gender}</p>
                 <p style={styles.price}>
                   Rs. {displayPrice ? Number(displayPrice).toLocaleString() : "0.00"}
                 </p>
@@ -102,7 +127,7 @@ export default function SearchResults() {
       ) : (
         <div style={styles.emptyState}>
           <ShoppingBag size={48} color="#ccc" />
-          <p>No products match your search. Try different keywords.</p>
+          <p>No products match your criteria. Try adjusting your filters or search.</p>
         </div>
       )}
     </div>
@@ -111,11 +136,11 @@ export default function SearchResults() {
 
 const styles = {
   container: { padding: '40px 8%', maxWidth: '1400px', margin: 'auto', fontFamily: 'Inter, sans-serif' },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' },
+  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' },
   backBtn: { display: 'flex', alignItems: 'center', gap: '5px', background: 'none', border: 'none', fontWeight: '700', cursor: 'pointer', fontSize: '12px' },
   title: { fontSize: '18px', fontWeight: '900', letterSpacing: '1px' },
   
-  // Filter Styles matching AllProducts
+  controlsGroup: { display: 'flex', gap: '10px' },
   filterWrapper: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f5f5f5', padding: '5px 15px', borderRadius: '25px' },
   select: { border: 'none', background: 'none', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', color: '#333' },
 
@@ -124,7 +149,8 @@ const styles = {
   imgWrapper: { overflow: 'hidden', borderRadius: '8px', backgroundColor: '#f9f9f9', aspectRatio: '1/1' },
   img: { width: '100%', height: '100%', objectFit: 'cover' },
   productName: { fontSize: '14px', fontWeight: '600', marginTop: '15px', color: '#333' },
+  genderLabel: { fontSize: '11px', color: '#888', margin: '2px 0' },
   price: { fontSize: '14px', fontWeight: '800', marginTop: '5px' },
-  emptyState: { textAlign: 'center', marginTop: '100px', color: '#999' },
+  emptyState: { textAlign: 'center', marginTop: '100px', color: '#999', width: '100%' },
   loader: { textAlign: 'center', padding: '100px', fontWeight: '600', color: '#666' }
 };

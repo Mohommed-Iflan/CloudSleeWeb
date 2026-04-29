@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom'; 
 import { 
   Edit, Trash2, Plus, X, Save, ShieldCheck, Palette, Layers3, 
-  PlusCircle, ImagePlus, Eye, Zap, Loader2, ArrowUp, ArrowDown, Upload 
+  PlusCircle, ImagePlus, Eye, Zap, Loader2, ArrowUp, ArrowDown, Upload, Users 
 } from 'lucide-react';
 
 export default function AdminProducts() {
@@ -44,7 +44,6 @@ export default function AdminProducts() {
     }
   };
 
-  // --- IMAGE UPLOAD LOGIC (Mirroring Add Product) ---
   const uploadSingleFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -109,10 +108,10 @@ export default function AdminProducts() {
     }
   };
 
-  // --- REORDERING & STATE HELPERS ---
   const startEditing = (prod) => {
     setEditingProduct({
       ...prod,
+      gender: prod.gender || '', // Initialize gender from DB
       main_images: prod.main_images || [],
       variant_data: prod.variant_data ? JSON.parse(JSON.stringify(prod.variant_data)) : []
     });
@@ -147,6 +146,7 @@ export default function AdminProducts() {
       .update({ 
         name: editingProduct.name, 
         description: editingProduct.description, 
+        gender: editingProduct.gender, // Save gender to Supabase
         main_images: editingProduct.main_images.filter(u => u !== ''), 
         variant_data: editingProduct.variant_data 
       })
@@ -156,6 +156,8 @@ export default function AdminProducts() {
       alert("Updated!");
       setEditingProduct(null);
       fetchProducts();
+    } else {
+      alert("Error: " + error.message);
     }
   };
 
@@ -178,6 +180,7 @@ export default function AdminProducts() {
           <tr style={styles.tableHead}>
             <th style={styles.th}>THUMB</th>
             <th style={styles.th}>PRODUCT NAME</th>
+            <th style={styles.th}>GENDER</th>
             <th style={styles.th}>VARIANTS</th>
             <th style={styles.th}>ACTIONS</th>
           </tr>
@@ -187,6 +190,7 @@ export default function AdminProducts() {
             <tr key={prod.id} style={styles.tableRow}>
               <td><img src={prod.main_images?.[0]} style={styles.thumb} alt=""/></td>
               <td style={styles.nameCell}>{prod.name}</td>
+              <td style={{fontSize:'13px', color:'#666'}}>{prod.gender || 'N/A'}</td>
               <td style={styles.variantCell}>
                 {prod.variant_data?.map((v, i) => (
                   <span key={i} style={styles.tag}>{v.name}</span>
@@ -215,12 +219,33 @@ export default function AdminProducts() {
                 <input 
                   style={styles.input} 
                   value={editingProduct.name} 
+                  placeholder="Product Name"
                   onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} 
+                  required
                 />
+
+                {/* GENDER OPTION ADDED HERE */}
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={styles.label}><Users size={14} /> Category / Gender</label>
+                  <select 
+                    style={styles.select} 
+                    value={editingProduct.gender} 
+                    onChange={e => setEditingProduct({...editingProduct, gender: e.target.value})}
+                    required
+                  >
+                    <option value="" disabled>Select Gender</option>
+                    <option value="Men">Men</option>
+                    <option value="Women">Women</option>
+                    <option value="Unisex">Unisex</option>
+                    <option value="Kids">Kids</option>
+                  </select>
+                </div>
+
                 <textarea 
                   style={styles.textarea} 
                   value={editingProduct.description} 
                   onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} 
+                  required
                 />
               </section>
 
@@ -333,8 +358,10 @@ const styles = {
   
   section: { backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '20px' },
   sectionTitle: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 'bold', marginBottom: '15px', color: '#444' },
+  label: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' },
   input: { width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' },
-  textarea: { width: '100%', padding: '12px', height: '80px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' },
+  select: { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', fontSize: '14px', outline: 'none' },
+  textarea: { width: '100%', padding: '12px', height: '80px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box', marginTop: '10px' },
   
   dropzone: { border: '2px dashed #1890ff', borderRadius: '12px', padding: '20px', textAlign: 'center', backgroundColor: '#f0f7ff', cursor: 'pointer', marginBottom: '15px' },
   imageGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px' },

@@ -3,19 +3,19 @@ import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, Layers3, Palette, Trash2, PlusCircle, 
-  ImagePlus, Eye, Zap, Loader2, ArrowUp, ArrowDown, Upload 
+  ImagePlus, Eye, Zap, Loader2, ArrowUp, ArrowDown, Upload, Users 
 } from 'lucide-react';
 
 export default function AddSlipper() {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
-  // Track multiple uploads: e.g., { "main-0": true, "main-1": true }
   const [uploadingMap, setUploadingMap] = useState({});
 
   const ADMIN_EMAIL = "mohommediflaan@gmail.com";
 
-  const [product, setProduct] = useState({ name: '', description: '', tags: '' });
+  // Added 'gender' to the initial state
+  const [product, setProduct] = useState({ name: '', description: '', tags: '', gender: '' });
   const [mainImages, setMainImages] = useState([]); 
   const [colors, setColors] = useState([
     { name: '', imageUrl: '', sizes: [{ size: '', price: '', stock: '' }] }
@@ -33,7 +33,6 @@ export default function AddSlipper() {
     verifyAdmin();
   }, [navigate]);
 
-  // --- Core Upload Logic ---
   const uploadSingleFile = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -48,16 +47,13 @@ export default function AddSlipper() {
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
 
-    // 1. Create temporary placeholders for the UI
     const startIndex = mainImages.length;
     const newPlaceholders = fileArray.map(() => ''); 
     setMainImages(prev => [...prev, ...newPlaceholders]);
 
-    // 2. Upload in parallel
     fileArray.forEach(async (file, i) => {
       const globalIndex = startIndex + i;
       const uploadId = `main-${globalIndex}`;
-      
       setUploadingMap(prev => ({ ...prev, [uploadId]: true }));
       
       try {
@@ -69,7 +65,6 @@ export default function AddSlipper() {
         });
       } catch (err) {
         alert(`Failed to upload ${file.name}: ${err.message}`);
-        // Remove the empty placeholder if it failed
         setMainImages(prev => prev.filter((_, idx) => idx !== globalIndex));
       } finally {
         setUploadingMap(prev => {
@@ -81,7 +76,6 @@ export default function AddSlipper() {
     });
   };
 
-  // Helper for single variant uploads
   const handleVariantUpload = async (file, colorIndex) => {
     if (!file) return;
     const uploadId = `variant-${colorIndex}`;
@@ -102,18 +96,15 @@ export default function AddSlipper() {
     }
   };
 
-  // --- Reordering Logic ---
   const moveImage = (index, direction) => {
     const next = [...mainImages];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= next.length) return;
-    
     [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
     setMainImages(next);
   };
 
   const removeMainImage = (index) => setMainImages(mainImages.filter((_, i) => i !== index));
-
   const addColor = () => setColors([...colors, { name: '', imageUrl: '', sizes: [{ size: '', price: '', stock: '' }] }]);
   const removeColor = (index) => {
     if (colors.length > 1) setColors(colors.filter((_, i) => i !== index));
@@ -135,12 +126,14 @@ export default function AddSlipper() {
   const handleSave = async (e) => {
     e.preventDefault();
     if (Object.keys(uploadingMap).length > 0) return alert("Please wait for images to finish uploading.");
+    if (!product.gender) return alert("Please select a gender category.");
     
     setLoading(true);
     const formattedData = {
       name: product.name,
       description: product.description,
       tags: product.tags,
+      gender: product.gender, // Included gender here
       main_images: mainImages.filter(url => url !== ''), 
       variant_data: colors 
     };
@@ -165,7 +158,6 @@ export default function AddSlipper() {
       </div>
 
       <form onSubmit={handleSave} style={styles.form}>
-        {/* SECTION 1: CORE INFO */}
         <section style={styles.section}>
           <h3 style={styles.sectionTitle}><Layers3 size={18}/> Basic Information</h3>
           <input 
@@ -174,6 +166,24 @@ export default function AddSlipper() {
             onChange={e => setProduct({...product, name: e.target.value})} 
             required 
           />
+          
+          {/* GENDER SELECTION DROPDOWN */}
+          <div style={{ marginBottom: '15px' }}>
+            <label style={styles.label}><Users size={14} /> Category / Gender</label>
+            <select 
+              style={styles.select} 
+              value={product.gender} 
+              onChange={e => setProduct({...product, gender: e.target.value})}
+              required
+            >
+              <option value="" disabled>Select Gender</option>
+              <option value="Men">Men</option>
+              <option value="Women">Women</option>
+              <option value="Unisex">Unisex</option>
+              <option value="Kids">Kids</option>
+            </select>
+          </div>
+
           <textarea 
             style={styles.textarea} 
             placeholder="Description (HTML Supported)" 
@@ -182,11 +192,8 @@ export default function AddSlipper() {
           />
         </section>
 
-        {/* SECTION 2: MODERN GALLERY */}
         <section style={styles.section}>
           <h3 style={styles.sectionTitle}><ImagePlus size={18}/> Main Product Gallery</h3>
-          
-          {/* Modern Upload Box */}
           <div style={styles.dropzone} onClick={() => document.getElementById('bulk-file').click()}>
             <Upload size={24} color="#1890ff" />
             <p style={{margin: '10px 0 0', fontSize: '14px', color: '#666'}}>Click to Upload Multiple Images</p>
@@ -220,7 +227,6 @@ export default function AddSlipper() {
           </div>
         </section>
 
-        {/* SECTION 3: VARIANTS */}
         <section style={styles.section}>
           <h3 style={styles.sectionTitle}><Palette size={18}/> Price, Stock & Variants</h3>
           {colors.map((colorObj, cIndex) => (
@@ -309,10 +315,11 @@ const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '25px' },
   section: { backgroundColor: '#fff', padding: '25px', borderRadius: '12px', border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   sectionTitle: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '15px', fontWeight: '600', marginBottom: '20px', color: '#555' },
+  label: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '500' },
   input: { width: '100%', padding: '12px', marginBottom: '15px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' },
-  textarea: { width: '100%', padding: '12px', height: '120px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box' },
+  select: { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', backgroundColor: '#fff', fontSize: '14px', appearance: 'none', outline: 'none' },
+  textarea: { width: '100%', padding: '12px', height: '120px', border: '1px solid #ddd', borderRadius: '8px', boxSizing: 'border-box', marginTop: '15px' },
   
-  // Gallery Styles
   dropzone: { border: '2px dashed #1890ff', borderRadius: '12px', padding: '30px', textAlign: 'center', backgroundColor: '#f0f7ff', cursor: 'pointer', transition: '0.2s', marginBottom: '20px' },
   imageGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '15px' },
   imageCard: { border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#fff' },
@@ -321,7 +328,6 @@ const styles = {
   imageLoading: { color: '#1890ff' },
   imageActions: { display: 'flex', justifyContent: 'space-around', padding: '5px', backgroundColor: '#f0f0f0' },
   
-  // Variant Styles
   variantCard: { border: '1px solid #eee', padding: '20px', borderRadius: '12px', marginBottom: '20px', backgroundColor: '#fff' },
   variantTopRow: { display: 'flex', gap: '15px', marginBottom: '15px' },
   variantInput: { flex: 1, padding: '10px', border: '1px solid #ddd', borderRadius: '8px' },
