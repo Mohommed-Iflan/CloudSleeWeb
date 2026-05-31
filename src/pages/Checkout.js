@@ -15,8 +15,10 @@ export default function Checkout() {
   const [showAddressPopup, setShowAddressPopup] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [addressError, setAddressError] = useState(false); // Tracks if address field validation failed
+  
+  // REMOVED state_province from initial state to prevent Supabase schema cache error
   const [newAddress, setNewAddress] = useState({
-    full_name: '', address_line: '', city: '', state_province: '', country: 'Sri Lanka', phone_number: ''
+    full_name: '', address_line: '', city: '', country: 'Sri Lanka', phone_number: ''
   });
 
   const addressSectionRef = useRef(null); // Reference point to snap scrolling view
@@ -82,7 +84,8 @@ export default function Checkout() {
       setSelectedAddressId(data.id);
       setIsAddingNew(false);
       setAddressError(false);
-      setNewAddress({ full_name: '', address_line: '', city: '', state_province: '', country: 'Sri Lanka', phone_number: '' });
+      // REMOVED state_province from form reset
+      setNewAddress({ full_name: '', address_line: '', city: '', country: 'Sri Lanka', phone_number: '' });
     }
   };
 
