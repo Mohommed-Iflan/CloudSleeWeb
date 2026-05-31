@@ -8,6 +8,7 @@ const RopeAnimation = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     let ropes = [];
     let mouse = { x: -1000, y: -1000, radius: 100 };
@@ -19,7 +20,7 @@ const RopeAnimation = () => {
         this.friction = 0.97;
         this.gravity = 0.4;
         this.pinned = false;
-        this.radius = 3; // Size of the white bulb
+        this.radius = 3;
       }
       update() {
         if (this.pinned) return;
@@ -55,7 +56,7 @@ const RopeAnimation = () => {
         let dx = this.p2.pos.x - this.p1.pos.x;
         let dy = this.p2.pos.y - this.p1.pos.y;
         let d = Math.sqrt(dx * dx + dy * dy);
-        let diff = (this.length - d) / d * 0.3;
+        let diff = (this.length - d) / (d || 1) * 0.3;
         let ox = dx * diff;
         let oy = dy * diff;
         if (!this.p1.pinned) { this.p1.pos.x -= ox; this.p1.pos.y -= oy; }
@@ -87,15 +88,13 @@ const RopeAnimation = () => {
         r.dots.forEach(d => d.update());
         for (let i = 0; i < 10; i++) r.sticks.forEach(s => s.update());
         
-        // DRAW WHITE WIRE
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'; // Clean White Wire
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.lineWidth = 1;
         ctx.moveTo(r.dots[0].pos.x, r.dots[0].pos.y);
         r.dots.forEach(d => ctx.lineTo(d.pos.x, d.pos.y));
         ctx.stroke();
 
-        // DRAW SIMPLE WHITE BULB (Last dot only)
         r.dots[r.dots.length - 1].drawSimpleBulb(ctx);
       });
       requestAnimationFrame(animate);
@@ -111,7 +110,10 @@ const RopeAnimation = () => {
     init();
     animate();
     window.addEventListener('mousemove', handleMouse);
-    return () => window.removeEventListener('mousemove', handleMouse);
+    return () => {
+      window.removeEventListener('mousemove', handleMouse);
+      window.removeEventListener('resize', init);
+    };
   }, []);
 
   return <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, zIndex: 0, pointerEvents: 'none' }} />;
@@ -161,30 +163,30 @@ export default function Home() {
   };
 
   return (
-    <div style={styles.container}>
-      <header style={styles.hero}>
+    <div style={styles.container} className="home-root-wrapper">
+      <header style={styles.hero} className="home-hero-section">
         <RopeAnimation />
         <div style={styles.heroContent}>
-          <h2 style={styles.heroTitle}>WALK ON CLOUDS.</h2>
+          <h2 style={styles.heroTitle} className="responsive-hero-title">WALK ON CLOUDS.</h2>
           <p style={styles.heroSub}>Premium comfort for your every step.</p>
         </div>
       </header>
 
-      <main style={styles.main}>
+      <main style={styles.main} className="home-main-layout">
         {loading ? (
           <div style={styles.loader}>LOADING COLLECTION...</div>
         ) : (
-          <div style={styles.grid}>
+          <div style={styles.grid} className="product-responsive-grid">
             {products.map((item) => (
-              <div key={item.id} style={styles.card} onClick={() => navigate(`/product/${item.id}`)}>
-                <div style={styles.imageWrapper}>
-                  <img src={item.main_images?.[0]} alt={item.name} style={styles.image} />
+              <div key={item.id} style={styles.card} className="product-card-item" onClick={() => navigate(`/product/${item.id}`)}>
+                <div style={styles.imageWrapper} className="product-img-wrapper">
+                  <img src={item.main_images?.[0]} alt={item.name} style={styles.image} className="product-thumbnail" />
                 </div>
-                <h3 style={styles.prodName}>{item.name?.toUpperCase()}</h3>
-                <p style={styles.price}>
+                <h3 style={styles.prodName} className="product-title-text">{item.name?.toUpperCase()}</h3>
+                <p style={styles.price} className="product-catchy-price">
                     Rs. {Number(item.variant_data?.[0]?.sizes?.[0]?.price || 0).toLocaleString()}
                 </p>
-                <button style={styles.addBtn}>VIEW OPTIONS</button>
+                <button style={styles.addBtn} className="product-action-btn">VIEW OPTIONS</button>
               </div>
             ))}
           </div>
@@ -192,11 +194,97 @@ export default function Home() {
       </main>
 
       {cart.length > 0 && (
-        <div style={styles.checkoutBar}>
+        <div style={styles.checkoutBar} className="responsive-checkout-bar">
           <span style={styles.barText}>{cart.length} ITEMS | Rs. {calculateTotal().toLocaleString()}</span>
           <button onClick={() => navigate('/checkout')} style={styles.checkoutBtn}>CHECKOUT</button>
         </div>
       )}
+
+      {/* STYLESHEET METHOD PROVIDES SAFE OVERRIDES ACCORDING TO VIEWPORT WIDTHS */}
+      <style>{`
+        /* --- GLOBAL RESETS TO PREVENT HORIZONTAL SCROLL ENTIRELY --- */
+        html, body, #root, .home-root-wrapper {
+          max-width: 100vw !important;
+          overflow-x: hidden !important;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        /* --- MOBILE VIEWPORTS (Max width 767px) --- */
+        @media (max-width: 767px) {
+          .home-hero-section {
+            padding: 100px 15px !important;
+          }
+          
+          .responsive-hero-title {
+            font-size: 2.2rem !important;
+            letter-spacing: -1px !important;
+          }
+
+          .home-main-layout {
+            padding: 25px 12px !important; /* Tight spacing layout protection */
+          }
+
+          /* Shows exactly 2 products per row on ultra small screens, 3 columns on small tablets */
+          .product-responsive-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important; 
+            gap: 16px !important; 
+          }
+          
+          @media (min-width: 480px) {
+            .product-responsive-grid {
+              grid-template-columns: repeat(3, 1fr) !important;
+              gap: 14px !important;
+            }
+          }
+
+          /* Scale image container smaller down to fit inline rows neatly */
+          .product-img-wrapper {
+            height: 160px !important;
+            margin-bottom: 8px !important;
+            border-radius: 6px !important;
+          }
+
+          .product-thumbnail {
+            object-fit: cover !important;
+          }
+
+          .product-title-text {
+            font-size: 11px !important;
+            line-height: 1.3 !important;
+            height: 2.6em; /* Keeps card grid heights even */
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin-bottom: 4px !important;
+          }
+
+          /* Vibrant, flashy red color override for the mobile price tags */
+          .product-catchy-price {
+            color: #ff2a2a !important; 
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            margin-bottom: 8px !important;
+          }
+
+          /* Shrinks down secondary interface buttons nicely */
+          .product-action-btn {
+            padding: 8px 5px !important;
+            font-size: 9px !important;
+            border-radius: 4px !important;
+          }
+
+          .responsive-checkout-bar {
+            width: calc(100% - 32px) !important;
+            bottom: 15px !important;
+            padding: 10px 20px !important;
+            gap: 15px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
