@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Truck, CreditCard, Landmark, Wallet, Plus, MessageCircle, X, Trash2, CheckCircle2 } from 'lucide-react';
@@ -14,10 +14,12 @@ export default function Checkout() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showAddressPopup, setShowAddressPopup] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [addressError, setAddressError] = useState(false); // Tracks if address field validation failed
   const [newAddress, setNewAddress] = useState({
-    full_name: '', address_line: '', city: '', city: '', country: 'Sri Lanka', phone_number: ''
+    full_name: '', address_line: '', city: '', state_province: '', country: 'Sri Lanka', phone_number: ''
   });
 
+  const addressSectionRef = useRef(null); // Reference point to snap scrolling view
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,6 +29,13 @@ export default function Checkout() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Clear errors automatically whenever an address option is successfully set
+  useEffect(() => {
+    if (selectedAddressId) {
+      setAddressError(false);
+    }
+  }, [selectedAddressId]);
 
   const prepareCheckout = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -72,6 +81,7 @@ export default function Checkout() {
       setAddresses([...addresses, data]);
       setSelectedAddressId(data.id);
       setIsAddingNew(false);
+      setAddressError(false);
       setNewAddress({ full_name: '', address_line: '', city: '', state_province: '', country: 'Sri Lanka', phone_number: '' });
     }
   };
@@ -96,7 +106,13 @@ export default function Checkout() {
     
     const { data: { user } } = await supabase.auth.getUser();
     const selectedAddress = addresses.find(a => a.id === selectedAddressId);
-    if (!selectedAddress) return alert("Please select a shipping address.");
+    
+    // Fallback animation trigger if delivery destination values are empty
+    if (!selectedAddress) {
+      setAddressError(true);
+      addressSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
     setIsAnimating(true);
 
@@ -110,7 +126,6 @@ export default function Checkout() {
         image_url: item.display_image || item.image || item.image_url || item.products?.main_images?.[0]
       }));
 
-      // 1. Create the order
       const { data: order, error: insertError } = await supabase.from('orders').insert([{
         user_id: user.id,
         items: finalItems,
@@ -126,7 +141,6 @@ export default function Checkout() {
 
       if (insertError) throw insertError;
 
-      // 2. Trigger the Deno Edge Function (Email)
       await supabase.functions.invoke('send-order-email', {
         body: {
           record: order,
@@ -135,11 +149,9 @@ export default function Checkout() {
         }
       });
 
-      // 3. Clear the cart items
       const itemIdsToRemove = orderItems.map(item => item.id);
       await supabase.from('cart_items').delete().in('id', itemIdsToRemove);
 
-      // 4. Animation Delay and Redirect
       setTimeout(() => {
         navigate('/success', { state: { orderId: order.id } });
       }, 5000);
@@ -155,7 +167,7 @@ export default function Checkout() {
   const selectedAddrObj = addresses.find(a => a.id === selectedAddressId);
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="checkout-root-wrapper">
       {showAddressPopup && (
         <div style={styles.modalOverlay}>
           <div style={{...styles.modalContent, width: isMobile ? '95%' : '450px'}}>
@@ -231,9 +243,19 @@ export default function Checkout() {
           ))}
         </div>
 
-        <div style={styles.addressSide}>
+        {/* Dynamic target ref wrapper block for scrolling snapping */}
+        <div 
+          ref={addressSectionRef} 
+          style={{
+            ...styles.addressSide,
+            borderColor: addressError ? '#e53e3e' : '#eee',
+            backgroundColor: addressError ? '#fff5f5' : '#fff',
+            borderWidth: addressError ? '2px' : '1px',
+            transition: 'all 0.3s ease'
+          }}
+        >
           <div style={styles.flexBetween}>
-            <p style={styles.sectionLabel}>SHIPPING ADDRESS</p>
+            <p style={{...styles.sectionLabel, color: addressError ? '#e53e3e' : '#999'}}>SHIPPING ADDRESS</p>
             <button style={styles.addNewBtn} onClick={() => setShowAddressPopup(true)}>CHANGE</button>
           </div>
           {selectedAddrObj ? (
@@ -245,8 +267,16 @@ export default function Checkout() {
               </div>
             </div>
           ) : (
-            <div style={styles.noAddressBox} onClick={() => {setShowAddressPopup(true); setIsAddingNew(true);}}>
-                <p>No address found. Click to add one.</p>
+            <div 
+              style={{
+                ...styles.noAddressBox,
+                borderColor: addressError ? '#e53e3e' : '#ccc',
+                backgroundColor: addressError ? '#ffefff' : 'transparent',
+                color: addressError ? '#e53e3e' : '#999'
+              }} 
+              onClick={() => {setShowAddressPopup(true); setIsAddingNew(true);}}
+            >
+                <b>{addressError ? "ADDRESS IS REQUIRED TO ORDER!" : "No address found. Click to add one."}</b>
             </div>
           )}
         </div>
@@ -317,7 +347,7 @@ export default function Checkout() {
               <button 
                 className={`order ${isAnimating ? 'animate' : ''}`} 
                 onClick={handlePlaceOrder}
-                disabled={orderItems.length === 0 || isAnimating || !selectedAddressId}
+                disabled={orderItems.length === 0 || isAnimating}
               >
                 <span className="default">Place Order</span>
                 <span className="success">
@@ -341,13 +371,40 @@ export default function Checkout() {
           </div>
         </div>
       </div>
+
+      {/* VIEWPORT CONTROLLER CSS STYLESHEET */}
+      <style>{`
+        /* --- STOP HORIZONTAL VIEWPORT BLEED ENTIRELY --- */
+        html, body, #root, [class*="layout"], [class*="wrapper"], .checkout-root-wrapper {
+          max-width: 100vw !important;
+          width: 100vw !important;
+          overflow-x: hidden !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          box-sizing: border-box !important;
+        }
+
+        @media (max-width: 767px) {
+          .checkout-root-wrapper {
+            padding: 15px 12px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          
+          /* Prevent inner side grid elements from leaking beyond standard view borders */
+          div, section, form, input {
+            box-sizing: border-box !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
-// Keep your styles object exactly as it was
 const styles = {
-  container: { padding: '20px 5%', maxWidth: '1400px', margin: 'auto', fontFamily: 'Inter, sans-serif' },
+  container: { padding: '20px 5%', maxWidth: '1400px', margin: 'auto', fontFamily: 'Inter, sans-serif', width: '100%' },
   mainTitle: { fontSize: '24px', fontWeight: '900', marginBottom: '20px', letterSpacing: '-0.5px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   modalContent: { backgroundColor: '#fff', padding: '25px', borderRadius: '20px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' },
@@ -374,7 +431,7 @@ const styles = {
   selectedAddrBar: { display: 'flex', gap: '15px', alignItems: 'flex-start', marginTop: '10px' },
   addrName: { fontSize: '13px', fontWeight: '800' },
   addrText: { fontSize: '12px', color: '#666', lineHeight: '1.4' },
-  noAddressBox: { padding: '20px', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', color: '#999' },
+  noAddressBox: { padding: '20px', border: '1px dashed #ccc', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', color: '#999', transition: 'all 0.2s' },
   mainGrid: { display: 'grid', gap: '25px', alignItems: 'start' },
   paymentColumn: { display: 'flex', flexDirection: 'column' },
   paymentFlexContainer: { display: 'flex', gap: '15px', alignItems: 'stretch' },
