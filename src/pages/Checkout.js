@@ -166,7 +166,7 @@ export default function Checkout() {
 
       setTimeout(() => {
         navigate('/success', { state: { orderId: order.id } });
-      }, 5000);
+      }, 7500);
 
     } catch (err) {
       setIsAnimating(false);
