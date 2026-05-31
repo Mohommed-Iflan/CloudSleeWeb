@@ -124,23 +124,22 @@ export default function AllProducts() {
 
       {/* PERSISTENT MOBILE AND VIEWPORT CSS OVERRIDES */}
       <style>{`
-        /* --- BLOCK HORIZONTAL OVERFLOW ENTIRELY --- */
-        html, body, #root, [class*="layout"], [class*="wrapper"], .catalog-root-wrapper {
+        /* --- BLOCK HORIZONTAL OVERFLOW SAFELY ON CORE CONTAINERS --- */
+        html, body, #root {
           max-width: 100vw !important;
-          width: 100vw !important;
           overflow-x: hidden !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
-          padding-left: 0 !important;
-          padding-right: 0 !important;
           box-sizing: border-box !important;
         }
 
         /* --- MOBILE VIEWPORT STYLES (Max width 767px) --- */
         @media (max-width: 767px) {
           .catalog-root-wrapper {
+            max-width: 100vw !important;
+            width: 100vw !important;
+            overflow-x: hidden !important;
             padding: 15px 10px !important;
-            width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
             box-sizing: border-box !important;
           }
 
@@ -159,7 +158,6 @@ export default function AllProducts() {
             width: 100% !important;
           }
 
-          /* Keep 2 columns layout on tiny screens, scale up cleanly to 3 columns on intermediate devices */
           .catalog-products-grid {
             display: grid !important;
             grid-template-columns: repeat(2, 1fr) !important;
@@ -188,10 +186,9 @@ export default function AllProducts() {
             border-radius: 8px !important;
           }
 
-          /* --- RE-INTRODUCED & STYLED TEXT TITLES FOR MOBILE --- */
           .catalog-item-title {
             display: -webkit-box !important;
-            -webkit-line-clamp: 2 !important; /* Cap at 2 neat lines max */
+            -webkit-line-clamp: 2 !important; 
             -webkit-box-orient: vertical !important;
             overflow: hidden !important;
             font-size: 11px !important;
@@ -202,15 +199,13 @@ export default function AllProducts() {
             margin-bottom: 2px !important;
             color: #222 !important;
             letter-spacing: 0.2px !important;
-            height: 2.6em !important; /* Fixed structural box prevents layout shuffling */
+            height: 2.6em !important; 
           }
 
-          /* Hide secondary tag text to save vertical whitespace */
           .catalog-item-gender {
             display: none !important;
           }
 
-          /* --- CLEAN FLASHY RED PRICE DISPLAY BELOW TITLE --- */
           .catalog-item-catchy-price {
             color: #d94040 !important; 
             font-size: 12px !important;
