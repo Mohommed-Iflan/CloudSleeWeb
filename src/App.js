@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ReactGA from 'react-ga4';
 import { supabase } from './supabaseClient';
 
 // Page Imports
@@ -25,8 +26,11 @@ import ContactUs from './pages/ContactUs';
 import Settings from './pages/Settings';
 import ResetPassword from './pages/ResetPassword';
 
+// Analytics Tracker Import (From Step 3)
+import AnalyticsTracker from './components/AnalyticsTracker';
 
-
+// Initialize GA4 tracking engine
+ReactGA.initialize('G-HS0W47YD8Q');
 
 // Helper component for Admin Access
 const AdminRoute = ({ children, user, adminEmail }) => {
@@ -72,6 +76,10 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
+      
+      {/* AnalyticsTracker runs silently inside the Router context to log every navigation hook */}
+      <AnalyticsTracker />
+
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <Navbar user={user} />
         
