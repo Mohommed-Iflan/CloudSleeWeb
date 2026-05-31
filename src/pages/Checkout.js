@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ReactGA from 'react-ga4'; // 1. Imported Google Analytics
 import { Truck, CreditCard, Landmark, Wallet, Plus, MessageCircle, X, Trash2, CheckCircle2 } from 'lucide-react';
 import './Checkout.css'; 
 
@@ -144,6 +145,14 @@ export default function Checkout() {
 
       if (insertError) throw insertError;
 
+      // 2. TRIGGER GOOGLE ANALYTICS SUCCESS PURCHASE EVENT
+      ReactGA.event({
+        category: 'Ecommerce',
+        action: 'Purchase Completed',
+        label: `Order ID: ${order.id} via ${paymentMethod}`,
+        value: calculateTotal() // Sends numeric value for revenue metric tracking
+      });
+
       await supabase.functions.invoke('send-order-email', {
         body: {
           record: order,
@@ -161,6 +170,14 @@ export default function Checkout() {
 
     } catch (err) {
       setIsAnimating(false);
+      
+      // 3. TRIGGER GOOGLE ANALYTICS FAILURE EVENT
+      ReactGA.event({
+        category: 'Errors',
+        action: 'Checkout Failed',
+        label: err.message
+      });
+
       alert(`Order Failed: ${err.message}`);
     }
   };
