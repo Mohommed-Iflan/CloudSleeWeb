@@ -8,6 +8,7 @@ const RopeAnimation = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return; 
     const ctx = canvas.getContext('2d');
     let ropes = [];
     let mouse = { x: -1000, y: -1000, radius: 100 };
@@ -121,6 +122,15 @@ export default function ProductDetails() {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxGallery, setLightboxGallery] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 992);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -232,9 +242,11 @@ export default function ProductDetails() {
 
   return (
     <div style={styles.pageWrapper}>
-      <header style={styles.heroHeader}>
-        <RopeAnimation />
-      </header>
+      {!isMobile && (
+        <header style={styles.heroHeader}>
+          <RopeAnimation />
+        </header>
+      )}
 
       {/* FULL SCREEN LIGHTBOX */}
       {isLightboxOpen && (
@@ -258,23 +270,27 @@ export default function ProductDetails() {
 
       <div style={styles.container}>
         <div className="glass-layout-container">
-          <div className="glass-thumb-sidebar">
-            {gallery.map((img, i) => (
-              <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={() => setMainImage(img)}>
-                <img src={img} alt="thumb" />
-              </div>
-            ))}
-          </div>
-
           <div className="glass-main-card">
-             {/* LEFT SIDE: Absolute positioning ensures it fills without pushing height */}
-             <div className="glass-image-section">
-                <div className="img-clip-container" onClick={() => openLightbox(mainImage)}>
-                   <img src={mainImage} alt={product.name} className="glass-hero-img" />
+             
+             {/* LEFT COMBINED VISUAL WRAPPER */}
+             <div className="glass-visual-column">
+                <div className="glass-image-section">
+                   <div className="img-clip-container" onClick={() => openLightbox(mainImage)}>
+                      <img src={mainImage} alt={product.name} className="glass-hero-img" />
+                   </div>
+                </div>
+
+                {/* THUMBNAIL CONTAINER */}
+                <div className="glass-thumb-sidebar">
+                  {gallery.map((img, i) => (
+                    <div key={i} className={`glass-thumb-item ${mainImage === img ? 'active' : ''}`} onClick={() => setMainImage(img)}>
+                      <img src={img} alt="thumb" />
+                    </div>
+                  ))}
                 </div>
              </div>
              
-             {/* RIGHT SIDE: The Master height controller */}
+             {/* RIGHT SIDE CONTROLS */}
              <div className="glass-controls-section">
                 <div className="glass-text-group">
                   <h3 className="glass-title">{product.name}</h3>
@@ -354,7 +370,7 @@ export default function ProductDetails() {
             </div>
           </div>
 
-          <div style={{ ...styles.trustItem, borderRight: 'none' }}>
+          <div className="last-trust-item" style={{ ...styles.trustItem, borderRight: 'none' }}>
             <img src="https://bewdtedexomudpelsrxj.supabase.co/storage/v1/object/public/icons/sri-lanka-country-map-thick-outline-icon-vector-50459471.jpg" alt="Sri Lanka" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
             <div style={styles.trustText}>
               <strong>Islandwide Delivery</strong>
@@ -401,18 +417,18 @@ export default function ProductDetails() {
                         </div>
 
                         <div style={styles.starRow}>
-                           {[...Array(5)].map((_, i) => (
+                            {[...Array(5)].map((_, i) => (
                              <Star 
                                key={i} 
                                size={16} 
                                fill={i < rev.rating ? "#f57224" : "none"} 
                                color={i < rev.rating ? "#f57224" : "#ddd"} 
                              />
-                           ))}
-                           <span style={styles.reviewDate}>
-                             <Calendar size={12} style={{marginRight: '4px'}} />
-                             {new Date(rev.created_at).toLocaleDateString()}
-                           </span>
+                            ))}
+                            <span style={styles.reviewDate}>
+                              <Calendar size={12} style={{marginRight: '4px'}} />
+                              {new Date(rev.created_at).toLocaleDateString()}
+                            </span>
                         </div>
 
                         <p style={styles.reviewComment}>{rev.comment}</p>
@@ -444,12 +460,28 @@ export default function ProductDetails() {
       </div>
 
       <style>{`
-        /* --- DESKTOP STYLES (UNCHANGED) --- */
+        body, html, #root {
+          max-width: 100vw;
+          overflow-x: hidden !important;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* --- DESKTOP STYLES --- */
         .glass-layout-container { display: flex; gap: 30px; margin-top: -260px; position: relative; z-index: 10; font-family: 'Poppins', sans-serif; justify-content: flex-start; align-items: flex-start; flex-wrap: wrap; }
-        .glass-thumb-sidebar { display: flex; flex-direction: column; gap: 15px; }
-        .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; }
+        
+        .glass-visual-column {
+          flex: 1.2;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          padding: 40px 0 40px 40px;
+        }
+
+        .glass-thumb-sidebar { display: flex; flex-direction: row; gap: 15px; justify-content: flex-start; overflow-x: auto; width: 100%; py: 5px; }
+        .glass-thumb-item { width: 70px; height: 70px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; overflow: hidden; flex-shrink: 0; }
         .glass-thumb-item img { width: 100%; height: 100%; object-fit: cover; }
-        .glass-thumb-item.active { border-color: #fff; background: rgba(255,255,255,0.4); }
+        .glass-thumb-item.active { border-color: #fff; background: rgba(255,255,255,0.4); outline: 2px solid #000; }
         
         .glass-main-card { 
           flex: 1; 
@@ -467,20 +499,22 @@ export default function ProductDetails() {
         }
 
         .glass-image-section { 
-          flex: 1.2; 
+          width: 100%;
+          aspect-ratio: 16 / 13;
           position: relative;
           background: rgba(255,255,255,0.05); 
+          border-radius: 20px;
+          overflow: hidden;
         }
 
         .img-clip-container {
           position: absolute;
-          top: 30px; left: 30px; right: 30px; bottom: 30px;
+          top: 0; left: 0; right: 0; bottom: 0;
           overflow: hidden;
-          border-radius: 20px;
           cursor: zoom-in;
         }
 
-        .glass-hero-img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; border-radius: 20px; }
+        .glass-hero-img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
 
         .glass-controls-section { 
           flex: 1; 
@@ -509,62 +543,176 @@ export default function ProductDetails() {
         .glass-cart-btn { background: #000; color: #fff; border: none; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; }
         .glass-buy-btn { background: transparent; color: #000; border: 2px solid #000; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; }
 
-        /* --- MOBILE OPTIMIZATION (THE FIX) --- */
+        /* --- MOBILE OPTIMIZATION OVERRIDES --- */
         @media (max-width: 992px) {
            .glass-layout-container { 
-             margin-top: -300px; 
-             width: 100%
-             padding: 0 15px; 
+             margin-top: 0px; 
+             width: 100%;
+             max-width: 100%;
+             padding: 0; 
              flex-direction: column; 
+             gap: 0px;
+             box-sizing: border-box;
+           }
+
+           .glass-visual-column {
+             flex: none;
+             width: 100%;
+             padding: 0;
+             gap: 10px;
            }
 
            .glass-main-card { 
              flex-direction: column; 
              min-height: auto; 
-             border-radius: 25px; 
+             width: 100%;
+             max-width: 100%;
+             border-radius: 0px; 
+             background: #fff;
+             backdrop-filter: none;
+             border: none;
+             box-shadow: none;
+             box-sizing: border-box;
            }
 
            .glass-image-section { 
-             height: 360px; /* Forces height so absolute child shows up */
-             width: 360px;
-             flex: none;
+             height: auto;
+             aspect-ratio: 1 / 1;
+             width: 100%;
+             max-width: 100%;
+             border-radius: 0;
+             background: #fafafa;
+             box-sizing: border-box;
            }
 
            .img-clip-container { 
-             top: 10px; left: 10px; right: 10px; bottom: 0; 
-             border-radius: 1; 
+             position: relative;
+             width: 100%;
+             height: 100%;
            }
 
            .glass-hero-img { 
              border-radius: 0; 
              width: 100%;
              height: 100%;
+             object-fit: contain; 
            }
 
            .glass-thumb-sidebar { 
-             flex-direction: row; 
-             order: 2; /* Shows thumbnails after the main image card */
-             overflow-x: auto; 
-             padding: 10px 0; 
+             padding: 8px 16px; 
              width: 100%;
+             gap: 10px;
+             box-sizing: border-box;
+             overflow-x: auto;
+             -webkit-overflow-scrolling: touch;
            }
 
            .glass-thumb-item {
-             width: 60px; height: 60px; flex-shrink: 0;
+             width: 60px; 
+             height: 60px; 
+             border-radius: 8px;
+             background: #f5f5f5; 
+             border: 1px solid #ddd;
            }
 
            .glass-controls-section { 
-             padding: 30px 20px; 
-             background: #fff; /* Easier to read controls on white */
-             border-radius: 0 0 25px 25px;
+             padding: 16px 16px; 
+             background: #fff;
+             width: 100%;
+             box-sizing: border-box;
+             display: flex;
+             flex-direction: column;
+             align-items: stretch;
            }
 
-           .glass-title { color: #000; font-size: 22px; }
-           .glass-price { font-size: 20px; margin-bottom: 20px; }
+           /* Typography Adjustment */
+           .glass-title { 
+             color: #222; 
+             font-size: 20px; 
+             font-weight: 700; 
+             line-height: 1.4;
+             margin-bottom: 8px;
+           }
+           .glass-price { font-size: 22px; margin-bottom: 20px; color: #f57224; }
+           
+           /* Explicit element flex structures */
+           .glass-selectors {
+             width: 100%;
+             display: flex;
+             flex-direction: column;
+             align-items: flex-start;
+           }
+           
+           .glass-swatch-row { 
+             display: flex; 
+             gap: 12px; 
+             margin-bottom: 20px; 
+             width: 100%; 
+             justify-content: flex-start;
+             flex-wrap: wrap;
+           }
+           
+           .glass-size-row { 
+             display: flex; 
+             gap: 10px; 
+             margin-bottom: 30px; 
+             width: 100%; 
+             justify-content: flex-start;
+             flex-wrap: wrap;
+           }
+
+           .glass-size-btn {
+             width: 50px;
+             height: 44px;
+             font-size: 14px;
+           }
+           
+           /* Force full-width container stacking */
+           .glass-action-stack { 
+             max-width: 100% !important; 
+             width: 100% !important;
+             display: flex;
+             flex-direction: column;
+             gap: 12px;
+           }
+           
+           .glass-cart-btn, .glass-buy-btn {
+             width: 100% !important;
+             box-sizing: border-box;
+             text-align: center;
+             padding: 14px;
+             font-size: 15px;
+             border-radius: 10px;
+           }
+           
+           div[style*="trustBar"] {
+             grid-template-columns: 1fr;
+             margin: 20px 16px;
+             padding: 16px;
+             gap: 16px;
+             max-width: calc(100% - 32px);
+             box-sizing: border-box;
+           }
+           .last-trust-item, div[style*="trustItem"] {
+             border-right: none !important;
+             border-bottom: 1px solid #f5f5f5;
+             padding-bottom: 12px;
+             width: 100%;
+             box-sizing: border-box;
+           }
+           div[style*="reviewCard"] {
+             flex-direction: column;
+             gap: 10px;
+             padding: 16px;
+             max-width: 100%;
+             box-sizing: border-box;
+           }
            
            .bottom-content { 
-             padding: 0 15px; 
-             margin-top: 30px; 
+             padding: 0 16px; 
+             margin-top: 20px; 
+             max-width: 100%;
+             box-sizing: border-box;
            }
         }
       `}</style>
